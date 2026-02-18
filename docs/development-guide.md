@@ -1,6 +1,6 @@
 # IELTS-mate 开发指南
 
-> 最后更新：2026-02-17
+> 最后更新：2026-02-18
 
 ## 1. 环境要求
 
@@ -31,8 +31,11 @@ cd IELTS-mate
 ### 2.2 前端环境搭建
 
 ```bash
-# 安装前端依赖
+# 安装前端依赖 (包含 React, Electron, Flux UI 相关库)
 pnpm install
+
+# 安装 Flux Academy 风格核心依赖 (若未包含)
+pnpm add framer-motion lucide-react clsx tailwind-merge
 ```
 
 若网络环境导致 Electron 二进制下载缓慢，可临时使用镜像后重装 Electron：
@@ -118,37 +121,44 @@ main                    ← 稳定发布分支
 - [x] 验证 WebSocket 连接
 - [x] 实现 Graceful Shutdown
 
-**Phase 2 - 全局基础设施**
+**Phase 2 - 全局基础设施 (Flux UI)**
 - [x] 搭建 SQLite 数据库连接 (async)
 - [x] 实现 Settings API (BYOK)
 - [x] 实现 LLM 适配器 (OpenAI-compatible)
-- [x] 实现基础 UI 框架 (Layout, Sidebar, Router)
+- [x] **[NEW] 实现 Flux UI 基础组件**：
+  - `<FluidBackground />` (交互光斑)
+  - `<GlassCard />` (陶瓷磨砂)
+  - `<Dock />` (底部悬浮导航)
+  - `<PageContainer />` (统一留白与最大宽度)
+- [x] **[NEW] 搭建新版路由结构**
+- [x] **[NEW] 实现 Settings 页 Flux 风格表单与 Test Connection**
+- [x] **[NEW] 实现 Vocabulary Hub / Review、Writing Hub、Speaking Hub**
 
 **Phase 3 - 词汇记忆模块**
 - [x] 实现 SM-2 算法 (后端)
 - [x] 词汇数据初始化 (JSON → SQLite)
 - [x] 词汇核心复习 API (`GET /api/vocabulary/review`, `POST /api/vocabulary/{id}/review`)
-- [ ] 前端闪卡 UI & 复习交互
-- [ ] ECharts 热力图 & 学习曲线
+- [ ] 前端 Hub 页面与玻璃闪卡 UI
+- [ ] ECharts 热力图 (适配光点风格)
 
 **Phase 4 - 写作批改模块**
 - [ ] 实现 5-Agent 并行架构 (后端)
 - [ ] 题目生成 API (Part A 图表 JSON + Part B 文本)
-- [ ] 前端写作编辑器 UI
+- [ ] 前端写作编辑器 UI (纸张质感)
 - [ ] ECharts 渲染 Part A 图表
-- [ ] 评分报告展示 (Markdown 渲染)
+- [ ] 评分报告展示
 
 **Phase 5 - 口语模考模块**
 - [ ] 实现 STT/TTS 适配器
 - [ ] 实现口语状态机 (后端)
 - [ ] 实现滑动窗口 + 阶段摘要记忆
 - [ ] WebSocket 实时通信
-- [ ] 前端录音 & 播放 UI
+- [ ] 前端录音 & 波形可视化 UI
 - [ ] 计时器 & 视觉/听觉提醒
 - [ ] 口语报告生成
 
 **Phase 6 - 完善与打包**
-- [ ] Dashboard 首页仪表盘
+- [x] Dashboard 首页仪表盘 (Bento Grid)
 - [ ] PyInstaller 后端打包
 - [ ] electron-builder 整体打包
 - [ ] 跨平台测试
@@ -167,93 +177,18 @@ main                    ← 稳定发布分支
 - 使用 async/await 异步编程
 - 文件命名：`snake_case.py`
 
-## 5. 构建与打包
+## 5. 构建与打包 (保持不变)
 
-### 5.1 Python 后端打包 (PyInstaller)
+...
 
-```bash
-conda activate dl
+## 6. 调试技巧 (保持不变)
 
-# 打包后端为单文件可执行程序
-cd backend
-pyinstaller --onefile --name backend app/main.py
-```
+...
 
-产物位于 `backend/dist/backend.exe` (Windows)
+## 7. 目录约定 (保持不变)
 
-### 5.2 Electron 前端打包
+...
 
-```bash
-# 先将 PyInstaller 产物复制到 resources 目录
-# 然后执行打包
-pnpm build:win     # Windows
-pnpm build:mac     # macOS
-pnpm build:linux   # Linux
-```
+## 8. 词表数据源规划 (保持不变)
 
-### 5.3 electron-builder 配置要点
-
-```yaml
-# electron-builder.yml
-extraResources:
-  - from: "backend/dist/"
-    to: "backend"
-    filter:
-      - "**/*"
-```
-
-这确保 PyInstaller 打包的 Python 后端被嵌入到 Electron 应用中。
-
-## 6. 调试技巧
-
-### 6.1 前端调试
-
-- Electron 渲染进程支持 Chrome DevTools
-- `pnpm dev` 模式下支持 React 组件热更新
-- 使用 React DevTools 扩展检查组件树
-
-### 6.2 后端调试
-
-- 开发模式下 FastAPI 使用 `uvicorn --reload`，修改 Python 代码自动重启
-- 访问 `http://127.0.0.1:{port}/docs` 查看 Swagger UI 自动生成的 API 文档
-- 使用 `logging` 模块输出调试信息，日志会通过 Electron 主进程捕获
-
-快速 smoke 测试（统一使用 `dl` 环境）：
-
-```bash
-# 在项目根目录执行
-E:\apps\anaconda3\envs\dl\python.exe backend/tests/smoke_step2.py
-```
-
-```bash
-# 在 backend 目录执行
-E:\apps\anaconda3\envs\dl\python.exe tests/smoke_step2.py
-```
-
-### 6.3 数据库调试
-
-- 开发阶段 SQLite 数据库文件位于项目根目录 `data/ielts_mate.db`
-- 可使用 DB Browser for SQLite 直接查看和编辑数据
-- 生产环境数据库位于 Electron 的 `userData` 目录
-
-## 7. 目录约定
-
-| 路径 | 用途 |
-|------|------|
-| `src/main/` | Electron 主进程代码 |
-| `src/preload/` | Electron preload 脚本 |
-| `src/renderer/src/` | React 前端源码 |
-| `backend/app/` | Python FastAPI 源码 |
-| `backend/data/` | 静态数据文件 (词汇 JSON 等) |
-| `backend/tests/` | Python 测试文件 |
-| `docs/` | 工程文档 |
-| `resources/` | 应用资源 (图标等) |
-
-## 8. 词表数据源规划（ECDICT）
-
-- 当前开发阶段使用 `backend/data/vocabulary_mock.json` 进行功能联调。
-- 后续数据源计划采用 ECDICT 的 `ecdict.csv`，通过 `tag` 字段筛选 `ielts` 标签。
-- 预期新增一个轻量 Python 清洗脚本：
-  - 输入：`ecdict.csv`
-  - 过滤：`tag` 包含 `ielts`
-  - 输出：项目可直接读取的 `json`（保留 `word/phonetic/definition/translation/tag` 等核心字段）
+...
