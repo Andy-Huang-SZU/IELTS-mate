@@ -2,6 +2,7 @@ node_modules/
 out/
 dist/
 release/
+package-lock.json
 
 .DS_Store
 Thumbs.db
@@ -19,3 +20,16 @@ data/
 
 .env
 .env.*
+
+# Vite 独立预览配置 (仅 CVM 开发用，不纳入版本管理)
+vite.preview.config.ts
+
+# 临时/缓存文件
+_tmp_*
+cursor_*
+*.log
+
+# IDE 配置
+.codebuddy/
+.cursor/
+.trae/

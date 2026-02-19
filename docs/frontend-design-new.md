@@ -1,12 +1,12 @@
 这是一份基于 **"Flux Academy (Light Mode)"** 视觉风格的最终版前端设计方案。
 
-该方案将重点放在 **“轻盈”、“流动”与“触感”** 上，并提供了具体的代码实现思路，确保开发落地的还原度。
+该方案将重点放在 **"轻盈"、"流动"与"触感"** 上，并提供了具体的代码实现思路，确保开发落地的还原度。
 
 ---
 
 # 前端设计方案：Flux Academy (Light Mode)
 
-> **核心理念**：将软件界面打造为一个“悬浮在云端的书房”。抛弃沉重的深色科幻感，转而使用温暖的柔光、陶瓷质感的磨砂玻璃和符合物理直觉的微交互。
+> **核心理念**：将软件界面打造为一个"悬浮在云端的书房"。抛弃沉重的深色科幻感，转而使用温暖的柔光、陶瓷质感的磨砂玻璃和符合物理直觉的微交互。
 
 ## 1. 设计系统基础 (Design System)
 
@@ -52,7 +52,7 @@
         2.  创建一个 `useRef` 存储每个 Blob 的当前坐标 `(currX, currY)`。
         3.  使用 `requestAnimationFrame` 循环：每一帧计算 `curr` 向 `target` 靠近一点点。
         4.  更新 DOM 的 `transform: translate3d(...)`。
-    *   *优化*：为不同的 Blob 设置不同的“滞后系数” (0.05, 0.03, 0.08)，制造出层次感。
+    *   *优化*：为不同的 Blob 设置不同的"滞后系数" (0.05, 0.03, 0.08)，制造出层次感。
 
 ```javascript
 // 伪代码示例
@@ -67,7 +67,7 @@ const useMouseFollow = (ref, delay) => {
 ```
 
 ### 2.2 陶瓷质感磨砂玻璃 (Ceramic Glassmorphism)
-**目标**：不同于普通的磨砂，这种玻璃要有“厚度”和“温润感”，边缘有高光。
+**目标**：不同于普通的磨砂，这种玻璃要有"厚度"和"温润感"，边缘有高光。
 
 **CSS 实现 (Tailwind v4 / Custom CSS)**：
 
@@ -104,22 +104,29 @@ const useMouseFollow = (ref, delay) => {
 ```
 
 ### 2.3 3D 核心球体 (The Hero Orb)
-**目标**：首页左侧的视觉中心，一个缓慢蠕动的有机球体。
+**目标**：首页左侧的视觉中心，一个缓慢蠕动的有机球体，具有陶瓷/粘土质感。
 
-**实现方案**：
-*   **高配版 (推荐)**: 使用 **Spline** 导出的 React 组件。这是最容易实现图示那种“类似粘土/软糖”质感的方法。
-*   **低配版 (纯 CSS)**: 使用 CSS `border-radius` 动画。
-    ```css
-    @keyframes morph {
-      0% { border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%; }
-      50% { border-radius: 30% 60% 70% 40% / 50% 60% 30% 60%; }
-      100% { border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%; }
-    }
-    .hero-orb {
-      background: linear-gradient(135deg, #FFD6A5 0%, #FF9F43 100%);
-      animation: morph 8s ease-in-out infinite;
-    }
-    ```
+**实现方案 (纯 CSS 多层渐变，已实现)**：
+1.  **环境光晕层**：底层 `blur(30px)` + `scale(1.15)` 的柔和扩散光，营造悬浮发光感。
+2.  **主体球体**：三层径向渐变叠加
+    *   顶部受光面：`radial-gradient(ellipse 65% 55% at 35% 30%, rgba(255,245,230,0.9), transparent)`
+    *   底部暗面：`radial-gradient(ellipse 50% 45% at 65% 70%, rgba(210,120,60,0.45), transparent)`
+    *   基础色：`#FFDAB5 → #F4A261 → #E07845 → #C85A30` 四色渐变
+3.  **`inset box-shadow`**：内发光模拟陶瓷半透明质感
+4.  **高光反射层**：独立 div，使用 `animate-morph-reverse`（12s 周期），与主体异步变形，模拟"光在球面上移动"
+5.  **底部反光层**：柔和的底部反射光
+
+**动画关键帧 (6帧，10s 周期)**：
+```css
+@keyframes morph {
+  0%   { border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%; }
+  20%  { border-radius: 40% 60% 50% 50% / 35% 55% 45% 65%; }
+  40%  { border-radius: 50% 50% 60% 40% / 55% 40% 60% 45%; }
+  60%  { border-radius: 30% 60% 70% 40% / 50% 60% 30% 60%; }
+  80%  { border-radius: 55% 45% 35% 65% / 45% 55% 50% 50%; }
+  100% { border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%; }
+}
+```
 
 ---
 
@@ -138,21 +145,28 @@ const useMouseFollow = (ref, delay) => {
     *   **Goals**: 列表项。完成的项划掉并淡化。
     *   **Mastery**: 环形进度条或条形进度条。使用 SVG `stroke-dasharray` 实现动画。
 
-### 3.2 悬浮导航坞 (Floating Dock)
-**位置**：屏幕底部居中，`position: fixed; bottom: 32px;`。
-**样式**：胶囊形状，极高的磨砂玻璃模糊度。
+### 3.2 macOS Dock 导航栏 (已实现)
+**位置**：视口底部，`position: fixed; bottom: 0;`，不随页面滚动。
+**样式**：微妙渐变背景 + `backdrop-filter: blur(16px)` 磨砂效果。
 
-**图标设计 (使用 Lucide React)**：
-1.  **Home**: `Home` (首页)
-2.  **Vocab**: `Library` 或 `BookOpen` (代表词库)
-3.  **Writing**: `PenTool` 或 `Feather` (羽毛笔，更优雅)
-4.  **Speaking**: `Mic` (麦克风)
-5.  **Settings**: `Settings` (设置)
+**图标设计 (自定义 3D 玻璃风格 PNG)**：
+1.  **首页**: `icon_home_attr1_subject.png`
+2.  **词汇**: `icon_vocab_attr1_subject.png`
+3.  **写作**: `icon_writing_attr1_subject.png`
+4.  **口语**: `icon_speaking_attr1_subject.png`
+5.  **设置**: `icon_settings_attr1_subject.png`
+
+图标为 1024×1024 PNG，CSS 通过 `transform: scale(1.58)` + `overflow: hidden` 裁剪至中心 630×630 有效区域。
 
 **交互**：
-*   使用 **Framer Motion** 的 `<motion.div layoutId="active-pill" />`。
-*   当点击不同图标时，一个淡淡的白色光斑背景会在图标之间平滑滑动（而不是生硬的跳转）。
-*   鼠标悬停图标时，图标轻微上浮 `translateY(-4px)`。
+*   悬停时图标放大 1.32x + 上浮 8px，相邻图标联动缩放 1.12x（CSS `:has()` + `+` 选择器）。
+*   点击弹跳动画 (`dockBounce` keyframes)。
+*   选中态：图标下方 5px 橙色小圆点指示器。
+*   悬停 tooltip：暗色半透明标签 + 小三角指示。
+
+**分隔线**：居中渐隐渐变线 (`linear-gradient(90deg, transparent → rgba(180,170,160,0.35) → transparent)`)。
+
+**背景区分**：从透明渐变到 `rgba(235,232,224,0.88)`，与 Canvas `#F7F6F2` 形成微妙区分。
 
 ---
 

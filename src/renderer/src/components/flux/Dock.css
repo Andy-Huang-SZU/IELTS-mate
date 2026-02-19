@@ -1,0 +1,146 @@
+/* ===== Dock 底部居中导航 — 无暗示条，hover 浮现 ===== */
+
+/* 透明热区 — 底部居中 */
+.dock-zone {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  height: 72px;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  pointer-events: auto;
+}
+
+/* ===== 图标行容器 ===== */
+.dock-bar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 8px 24px;
+  margin-bottom: 12px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  box-shadow:
+    0 2px 24px -4px rgba(0, 0, 0, 0.1),
+    0 0 0 1px rgba(255, 255, 255, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  opacity: 0;
+  transform: translateY(16px);
+  pointer-events: none;
+  transition: opacity 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+              transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform, opacity;
+}
+
+.dock-bar-open {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+/* ===== 单个图标项 ===== */
+.dock-item {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-decoration: none;
+  opacity: 1;
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* 图标容器 — 圆角正方形 */
+.dock-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 13px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow:
+    0 2px 10px -2px rgba(0, 0, 0, 0.1),
+    0 1px 3px rgba(0, 0, 0, 0.05),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.6);
+  border: 2px solid transparent;
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
+              border-color 0.15s ease,
+              box-shadow 0.2s ease;
+  will-change: transform;
+}
+
+.dock-icon-active {
+  border-color: #E17055;
+  box-shadow:
+    0 0 0 3px rgba(225, 112, 85, 0.12),
+    0 2px 12px -2px rgba(225, 112, 85, 0.25),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.4);
+}
+
+.dock-item:hover .dock-icon {
+  transform: scale(1.12) translateY(-2px);
+  box-shadow:
+    0 6px 20px -4px rgba(0, 0, 0, 0.14),
+    0 2px 6px rgba(0, 0, 0, 0.06);
+}
+
+/* 图标图片 */
+.dock-icon-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scale(1.58);
+  transform-origin: center;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* ===== Label tooltip — 图标上方 ===== */
+.dock-label {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  padding: 3px 9px;
+  border-radius: 6px;
+  background: rgba(45, 52, 54, 0.82);
+  backdrop-filter: blur(8px);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.dock-item:hover .dock-label {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* ===== 响应式 ===== */
+@media (max-width: 640px) {
+  .dock-zone {
+    height: 60px;
+  }
+  .dock-zone::before {
+    width: 340px;
+  }
+  .dock-bar {
+    gap: 10px;
+    padding: 6px 16px;
+    border-radius: 16px;
+    margin-bottom: 8px;
+  }
+  .dock-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 11px;
+  }
+}

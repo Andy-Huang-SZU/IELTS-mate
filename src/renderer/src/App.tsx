@@ -2,24 +2,22 @@ import { Outlet } from 'react-router-dom'
 import { FluidBackground, Dock } from './components/flux'
 
 /**
- * Flux Academy 布局容器
- * - 暖米白背景 Canvas
- * - 交互式流体背景 (光斑)
- * - 底部悬浮 Dock 导航
- * - 页面内容区域
+ * 布局容器
+ *
+ * - 全屏滚动容器，无底部占位
+ * - Dock 以 FAB 形式 fixed 在右下角，hover 扇形展开
+ * - 内容区域享有 100% 可用高度
  */
 export function App(): JSX.Element {
   return (
-    <div className="relative min-h-screen bg-[#F7F6F2]">
-      {/* 交互式流体背景 */}
+    <div className="relative h-screen overflow-y-auto bg-[#F7F6F2] scrollbar-hide">
       <FluidBackground />
-      
-      {/* 主内容区域 */}
-      <main className="relative z-10 min-h-screen pb-24">
+
+      <main className="relative z-10">
         <Outlet />
       </main>
-      
-      {/* 底部悬浮 Dock */}
+
+      {/* FAB 扇形导航 — fixed 定位，不占文档流 */}
       <Dock />
     </div>
   )

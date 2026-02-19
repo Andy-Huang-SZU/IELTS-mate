@@ -1,6 +1,6 @@
 # IELTS-mate API 规格文档
 
-> 最后更新：2026-02-17
+> 最后更新：2026-02-20
 >
 > 基础路径：`http://127.0.0.1:{port}/api`
 
@@ -194,7 +194,90 @@ Electron 主进程用于确认 Python 服务已就绪。
 }
 ```
 
-### 4.4 获取学习热力图数据
+### 4.5 获取干扰项（支持双向模式）
+
+`GET /api/vocabulary/{word_id}/distractors`
+
+**查询参数：**
+
+| 参数 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| mode | string | translation | `translation`=返回中文干扰释义（英→中），`word`=返回英文干扰词（中→英） |
+
+**响应 data：**
+```json
+{
+  "word_id": 1,
+  "distractors": ["adj. 短暂的", "adj. 模糊的", "adj. 冗余的"]
+}
+```
+
+### 4.6 获取今日新词列表
+
+`GET /api/vocabulary/new-words`
+
+**查询参数：**
+
+| 参数 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| limit | int | 30 | 返回的新词数量（即每日新词上限） |
+
+**响应 data：**
+```json
+{
+  "words": [
+    {
+      "id": 42,
+      "word": "ubiquitous",
+      "phonetic": "/juːˈbɪkwɪtəs/",
+      "definition": "adj. 无所不在的；普遍存在的",
+      "pos": "adj",
+      "difficulty": 3,
+      "example": "Mobile phones are now ubiquitous."
+    }
+  ],
+  "total": 25
+}
+```
+
+### 4.7 获取今日学习摘要
+
+`GET /api/vocabulary/today-summary`
+
+**响应 data：**
+```json
+{
+  "due_review_count": 15,
+  "new_learned_today": 12,
+  "daily_new_limit": 30
+}
+```
+
+### 4.8 获取词汇学习设置
+
+`GET /api/settings/vocabulary`
+
+**响应 data：**
+```json
+{
+  "daily_new_limit": 30
+}
+```
+
+### 4.9 更新词汇学习设置
+
+`PUT /api/settings/vocabulary`
+
+**请求体：**
+```json
+{
+  "daily_new_limit": 50
+}
+```
+
+**响应 data：** 同 4.8
+
+### 4.10 获取学习热力图数据
 
 `GET /api/vocabulary/heatmap`
 
@@ -216,7 +299,7 @@ Electron 主进程用于确认 Python 服务已就绪。
 }
 ```
 
-### 4.5 获取学习曲线数据
+### 4.11 获取学习曲线数据
 
 `GET /api/vocabulary/learning-curve`
 
@@ -235,7 +318,7 @@ Electron 主进程用于确认 Python 服务已就绪。
 }
 ```
 
-### 4.6 搜索/浏览词汇
+### 4.12 搜索/浏览词汇
 
 `GET /api/vocabulary/search`
 

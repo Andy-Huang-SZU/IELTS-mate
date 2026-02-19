@@ -18,7 +18,7 @@ export function PageContainer({ children, className, narrow = false }: PageConta
     <div
       className={twMerge(
         clsx(
-          'mx-auto w-full px-6 py-8',
+          'mx-auto w-full px-4 py-6 sm:px-6 sm:py-8',
           narrow ? 'max-w-2xl' : 'max-w-6xl',
           className
         )

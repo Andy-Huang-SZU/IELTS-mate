@@ -19,6 +19,11 @@ export default defineConfig({
         '@renderer': resolve(__dirname, 'src/renderer/src')
       }
     },
+    server: {
+      host: '0.0.0.0',
+      allowedHosts: 'all'
+    },
     plugins: [react()]
   }
 })
+

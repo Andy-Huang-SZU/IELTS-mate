@@ -12,7 +12,8 @@ from app.schemas.settings import (
     TestConnectionRequest,
     TestConnectionResponse,
 )
-from app.services.settings_service import get_settings, mask_payload, patch_settings
+from app.schemas.vocabulary import VocabSettingsData, VocabSettingsResponse
+from app.services.settings_service import get_settings, mask_payload, patch_settings, get_vocab_settings, save_vocab_settings
 from app.services.llm.factory import create_llm_client
 
 router = APIRouter(prefix="/api/settings", tags=["settings"])
@@ -64,3 +65,17 @@ async def test_connection(request: TestConnectionRequest) -> TestConnectionRespo
         ),
         message="ok",
     )
+
+
+@router.get("/vocabulary", response_model=VocabSettingsResponse)
+async def get_vocabulary_settings(session: AsyncSession = Depends(get_db_session)) -> VocabSettingsResponse:
+    data = await get_vocab_settings(session)
+    return VocabSettingsResponse(data=data)
+
+
+@router.put("/vocabulary", response_model=VocabSettingsResponse)
+async def update_vocabulary_settings(
+    request: VocabSettingsData, session: AsyncSession = Depends(get_db_session)
+) -> VocabSettingsResponse:
+    data = await save_vocab_settings(session, request)
+    return VocabSettingsResponse(data=data)

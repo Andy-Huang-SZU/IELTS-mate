@@ -7,8 +7,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.settings import Setting
 from app.schemas.settings import SettingsPayload, SettingsUpdateRequest
+from app.schemas.vocabulary import VocabSettingsData
 
 SETTINGS_KEY = "app_settings_v1"
+VOCAB_SETTINGS_KEY = "vocab_settings_v1"
 
 
 def mask_key(raw: str) -> str:
@@ -53,3 +55,25 @@ async def patch_settings(session: AsyncSession, updates: SettingsUpdateRequest) 
     patch_data = updates.model_dump(exclude_none=True)
     merged = current.model_copy(update=patch_data)
     return await save_settings(session, merged)
+
+
+async def get_vocab_settings(session: AsyncSession) -> VocabSettingsData:
+    result = await session.execute(select(Setting).where(Setting.key == VOCAB_SETTINGS_KEY))
+    row = result.scalar_one_or_none()
+    if not row:
+        return VocabSettingsData()
+    data = json.loads(row.value)
+    return VocabSettingsData(**data)
+
+
+async def save_vocab_settings(session: AsyncSession, payload: VocabSettingsData) -> VocabSettingsData:
+    result = await session.execute(select(Setting).where(Setting.key == VOCAB_SETTINGS_KEY))
+    row = result.scalar_one_or_none()
+    serialized = payload.model_dump_json()
+    if row:
+        row.value = serialized
+    else:
+        row = Setting(key=VOCAB_SETTINGS_KEY, value=serialized)
+        session.add(row)
+    await session.commit()
+    return payload

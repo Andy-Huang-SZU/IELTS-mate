@@ -20,15 +20,29 @@ async def lifespan(_: FastAPI):
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
         await conn.execute(text("SELECT 1"))
-    mock_file = Path(__file__).resolve().parents[1] / "data" / "vocabulary_mock.json"
+
+        # Auto-migrate: add first_learned_at column if missing
+        result = await conn.execute(text("PRAGMA table_info(vocabulary)"))
+        columns = [row[1] for row in result.fetchall()]
+        if "first_learned_at" not in columns:
+            await conn.execute(text("ALTER TABLE vocabulary ADD COLUMN first_learned_at DATE"))
+            # Backfill: set first_learned_at for already-learned words
+            await conn.execute(
+                text("UPDATE vocabulary SET first_learned_at = DATE(updated_at) WHERE repetition > 0")
+            )
+            print("migrated: added first_learned_at column")
+
+    # Use the full IELTS vocabulary file extracted from ECDICT; fall back to mock
+    vocab_file = Path(__file__).resolve().parents[1] / "data" / "ielts_vocabulary.json"
+    if not vocab_file.exists():
+        vocab_file = Path(__file__).resolve().parents[1] / "data" / "vocabulary_mock.json"
     async with AsyncSessionLocal() as session:
-        inserted = await init_vocabulary_if_empty(session, source_file=mock_file)
+        inserted = await init_vocabulary_if_empty(session, source_file=vocab_file)
         if inserted:
             print(f"initialized vocabulary with {inserted} items")
     try:
         yield
     finally:
-        # Keep this explicit log for graceful-shutdown verification.
         print("backend shutdown complete")
 
 

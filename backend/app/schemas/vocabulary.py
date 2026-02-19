@@ -10,11 +10,15 @@ class VocabularyItem(BaseModel):
     word: str
     phonetic: str
     definition: str
+    translation: str
+    full_translation: str = ""
+    pos: str = ""
     example: str
     interval: int
     repetition: int
     ease_factor: float
     status: str
+    difficulty: int = 3
     next_review: date | None
 
     model_config = ConfigDict(from_attributes=True)
@@ -103,4 +107,53 @@ class VocabularySearchData(BaseModel):
 class VocabularySearchResponse(BaseModel):
     success: bool = True
     data: VocabularySearchData
+    message: str = "ok"
+
+
+# ---- New schemas for vocabulary learning upgrade ----
+
+
+class TodaySummaryData(BaseModel):
+    due_review: int
+    new_words_learned_today: int
+    daily_new_words_limit: int
+    new_words_remaining: int
+    total_new_words: int
+
+
+class TodaySummaryResponse(BaseModel):
+    success: bool = True
+    data: TodaySummaryData
+    message: str = "ok"
+
+
+class NewWordsListData(BaseModel):
+    words: list[VocabularyItem]
+    today_learned: int
+    daily_limit: int
+
+
+class NewWordsListResponse(BaseModel):
+    success: bool = True
+    data: NewWordsListData
+    message: str = "ok"
+
+
+class VocabSettingsData(BaseModel):
+    daily_new_words_limit: int = 30
+
+
+class VocabSettingsResponse(BaseModel):
+    success: bool = True
+    data: VocabSettingsData
+    message: str = "ok"
+
+
+class DistractorWordsData(BaseModel):
+    distractors: list[str]
+
+
+class DistractorWordsResponse(BaseModel):
+    success: bool = True
+    data: DistractorWordsData
     message: str = "ok"

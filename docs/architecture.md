@@ -1,6 +1,6 @@
 # IELTS-mate 系统架构文档
 
-> 最后更新：2026-02-18
+> 最后更新：2026-02-20
 
 ## 1. 系统总览
 
@@ -104,12 +104,13 @@ IELTS-mate/
 │       │   ├── pages/                 # 页面组件
 │       │   │   ├── Dashboard/         # 首页 (Bento Grid 布局)
 │       │   │   │   └── index.tsx
-│       │   │   ├── Settings/          # BYOK 设置页
+│       │   │   ├── Settings/          # BYOK 设置页 (含词汇学习设置)
 │       │   │   │   └── index.tsx
 │       │   │   ├── Vocabulary/        # 单词记忆模块
-│       │   │   │   ├── Hub.tsx         # 词汇中心
-│       │   │   │   ├── Review.tsx      # 沉浸复习页
-│       │   │   │   └── FlashCard.tsx   # 玻璃质感闪卡
+│       │   │   │   ├── Hub.tsx         # 词汇中心 (双模式入口 + 每日上限)
+│       │   │   │   ├── Learn.tsx       # 新词学习 (四选一 Quiz + 双轮确认)
+│       │   │   │   ├── Review.tsx      # 复习页 (3D 翻转卡片 + 自评)
+│       │   │   │   └── SessionComplete.tsx # 学习完成统计页
 │       │   │   ├── Writing/           # 写作批改模块
 │       │   │   │   ├── Hub.tsx         # 写作中心
 │       │   │   │   ├── Editor.tsx      # 沉浸编辑器
@@ -128,10 +129,13 @@ IELTS-mate/
 │       │   │
 │       │   ├── services/              # API 服务层
 │       │   │   ├── api.ts             # Axios 实例与拦截器
+│       │   │   ├── vocabulary.ts      # 词汇 API 服务
+│       │   │   ├── settings.ts        # 设置 API 服务
 │       │   │   └── ...
 │       │   │
 │       │   ├── store/                 # Zustand 状态管理
 │       │   │   ├── useSettingsStore.ts # 全局设置/API Key 状态
+│       │   │   ├── useVocabularyStore.ts # 词汇模块状态 (含每日统计/设置)
 │       │   │   └── ...
 │       │   │
 │       │   ├── App.tsx                # 根组件 (Layout Entry)

@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.vocabulary import Vocabulary
 from app.schemas.vocabulary import (
     HeatmapPoint,
+    TodaySummaryData,
     VocabularyHeatmapData,
     VocabularyLearningCurveData,
     VocabularyReviewResultData,
@@ -28,12 +29,27 @@ async def init_vocabulary_if_empty(session: AsyncSession, source_file: Path) -> 
     raw = json.loads(source_file.read_text(encoding="utf-8"))
     items: list[Vocabulary] = []
     for item in raw:
+        tags_val = item.get("tags", [])
+        if isinstance(tags_val, list):
+            tags_str = " ".join(tags_val)
+        else:
+            tags_str = str(tags_val)
         items.append(
             Vocabulary(
                 word=item.get("word", "").strip(),
                 phonetic=item.get("phonetic", "").strip(),
                 definition=item.get("definition", "").strip(),
+                translation=item.get("translation", "").strip(),
+                full_translation=item.get("full_translation", "").strip(),
+                pos=item.get("pos", "").strip(),
                 example=item.get("example", "").strip(),
+                difficulty=item.get("difficulty", 3),
+                collins=item.get("collins", 0),
+                oxford=item.get("oxford", 0),
+                tags=tags_str,
+                bnc=item.get("bnc", 0),
+                frq=item.get("frq", 0),
+                exchange=item.get("exchange", "").strip(),
                 next_review=date.today(),
                 status="new",
             )
@@ -44,14 +60,18 @@ async def init_vocabulary_if_empty(session: AsyncSession, source_file: Path) -> 
 
 
 async def get_due_words(session: AsyncSession, limit: int) -> tuple[int, list[Vocabulary]]:
+    """Get words due for review (already learned, not brand-new words)."""
     today = date.today()
-    due_clause = or_(Vocabulary.next_review.is_(None), Vocabulary.next_review <= today)
+    due_clause = and_(
+        Vocabulary.repetition > 0,
+        or_(Vocabulary.next_review.is_(None), Vocabulary.next_review <= today),
+    )
 
     total_result = await session.execute(select(func.count(Vocabulary.id)).where(due_clause))
     total_due = int(total_result.scalar_one() or 0)
 
     words_result = await session.execute(
-        select(Vocabulary).where(due_clause).order_by(Vocabulary.id.asc()).limit(limit)
+        select(Vocabulary).where(due_clause).order_by(Vocabulary.next_review.asc(), Vocabulary.id.asc()).limit(limit)
     )
     words = list(words_result.scalars().all())
     return total_due, words
@@ -81,6 +101,10 @@ async def submit_review(
         word.status = "learning"
     else:
         word.status = "new"
+
+    # Record first learning date
+    if word.status in ("learning", "mastered") and not word.first_learned_at:
+        word.first_learned_at = date.today()
 
     await session.commit()
     return VocabularyReviewResultData(
@@ -243,3 +267,153 @@ async def search_vocabulary(
         ).scalars().all()
     )
     return VocabularySearchData(total=total, page=page, page_size=page_size, words=words)
+
+
+async def reset_all_progress(session: AsyncSession) -> int:
+    """Reset SM2 progress for all words back to 'new' state. Returns count of reset words."""
+    from sqlalchemy import update
+
+    result = await session.execute(
+        update(Vocabulary).values(
+            interval=0,
+            repetition=0,
+            ease_factor=2.5,
+            next_review=date.today(),
+            status="new",
+            first_learned_at=None,
+        )
+    )
+    await session.commit()
+    return result.rowcount or 0
+
+
+async def get_distractors(
+    session: AsyncSession, word_id: int, count: int = 3, mode: str = "translation"
+) -> list[str]:
+    """
+    Get distractors for quiz mode.
+    mode='translation': return distractor translations (for en->zh questions)
+    mode='word': return distractor word texts (for zh->en questions)
+    """
+    import random
+
+    target = await session.get(Vocabulary, word_id)
+    if not target:
+        return []
+
+    diff = target.difficulty
+    col = Vocabulary.translation if mode == "translation" else Vocabulary.word
+
+    # Get words from similar difficulty
+    candidates_result = await session.execute(
+        select(col).where(
+            and_(
+                Vocabulary.id != word_id,
+                Vocabulary.difficulty >= max(1, diff - 1),
+                Vocabulary.difficulty <= min(5, diff + 1),
+                col != "",
+            )
+        )
+    )
+    candidates = [row[0] for row in candidates_result.all()]
+
+    if len(candidates) < count:
+        fallback_result = await session.execute(
+            select(col).where(and_(Vocabulary.id != word_id, col != ""))
+        )
+        candidates = [row[0] for row in fallback_result.all()]
+
+    return random.sample(candidates, min(count, len(candidates)))
+
+
+async def get_new_words(session: AsyncSession, limit: int) -> tuple[list[Vocabulary], int, int]:
+    """
+    Get new words for learning. Returns (words, today_learned_count, daily_limit).
+    Only returns words that have never been learned (status='new' AND repetition=0).
+    """
+    from app.services.settings_service import get_vocab_settings
+
+    today = date.today()
+    settings = await get_vocab_settings(session)
+    daily_limit = settings.daily_new_words_limit
+
+    # Count how many new words were first learned today
+    today_learned = int(
+        (
+            await session.execute(
+                select(func.count(Vocabulary.id)).where(Vocabulary.first_learned_at == today)
+            )
+        ).scalar_one()
+        or 0
+    )
+
+    remaining = max(0, daily_limit - today_learned)
+    actual_limit = min(limit, remaining)
+
+    if actual_limit <= 0:
+        return [], today_learned, daily_limit
+
+    words_result = await session.execute(
+        select(Vocabulary)
+        .where(and_(Vocabulary.status == "new", Vocabulary.repetition == 0))
+        .order_by(Vocabulary.difficulty.asc(), Vocabulary.id.asc())
+        .limit(actual_limit)
+    )
+    words = list(words_result.scalars().all())
+    return words, today_learned, daily_limit
+
+
+async def get_today_summary(session: AsyncSession) -> TodaySummaryData:
+    """Get today's learning summary for the Hub page."""
+    from app.services.settings_service import get_vocab_settings
+
+    today = date.today()
+    settings = await get_vocab_settings(session)
+    daily_limit = settings.daily_new_words_limit
+
+    # Due for review (already learned words)
+    due_review = int(
+        (
+            await session.execute(
+                select(func.count(Vocabulary.id)).where(
+                    and_(
+                        Vocabulary.repetition > 0,
+                        or_(Vocabulary.next_review.is_(None), Vocabulary.next_review <= today),
+                    )
+                )
+            )
+        ).scalar_one()
+        or 0
+    )
+
+    # New words learned today
+    new_words_learned_today = int(
+        (
+            await session.execute(
+                select(func.count(Vocabulary.id)).where(Vocabulary.first_learned_at == today)
+            )
+        ).scalar_one()
+        or 0
+    )
+
+    # Total brand-new words available
+    total_new_words = int(
+        (
+            await session.execute(
+                select(func.count(Vocabulary.id)).where(
+                    and_(Vocabulary.status == "new", Vocabulary.repetition == 0)
+                )
+            )
+        ).scalar_one()
+        or 0
+    )
+
+    new_words_remaining = max(0, daily_limit - new_words_learned_today)
+
+    return TodaySummaryData(
+        due_review=due_review,
+        new_words_learned_today=new_words_learned_today,
+        daily_new_words_limit=daily_limit,
+        new_words_remaining=new_words_remaining,
+        total_new_words=total_new_words,
+    )

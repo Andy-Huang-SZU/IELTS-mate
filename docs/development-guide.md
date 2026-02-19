@@ -1,6 +1,6 @@
 # IELTS-mate 开发指南
 
-> 最后更新：2026-02-18
+> 最后更新：2026-02-20
 
 ## 1. 环境要求
 
@@ -9,15 +9,27 @@
 | 软件 | 最低版本 | 说明 |
 |------|---------|------|
 | Node.js | 20 LTS | 前端 & Electron 运行时 |
-| pnpm | 9.x | 前端包管理器 |
+| pnpm / npm | 9.x / 10.x | 前端包管理器（pnpm 优先，CVM 上可用 npm 替代） |
 | Python | 3.11+ | 后端运行时 |
-| Conda | - | Python 虚拟环境管理 (使用 `dl` 环境) |
+| Conda | - | Python 虚拟环境管理 (本地使用 `dl` 环境) |
 | Git | 2.x | 版本控制 |
 
 ### 1.2 推荐 IDE
 
-- **Cursor** (主力 IDE，支持 AI 辅助开发)
+- **CodeBuddy / Cursor** (主力 IDE，支持 AI 辅助开发)
 - VS Code 插件推荐：ESLint, Prettier, Tailwind CSS IntelliSense, Python
+
+### 1.3 开发环境概述
+
+本项目支持两种开发环境，各有特点：
+
+| 对比项 | 本地开发 (Windows/Mac) | CVM 云服务器 (Linux, 无 GUI) |
+|--------|----------------------|---------------------------|
+| Electron GUI | ✅ 可正常显示窗口 | ❌ 无 GUI，无法启动 Electron 窗口 |
+| `pnpm dev` | ✅ 一键启动全栈 | ⚠️ Electron 主进程会因缺少 GUI 失败退出 |
+| 前端 UI 预览 | 通过 Electron 窗口查看 | 需使用 **Vite 独立预览模式**（见 2.5 节） |
+| 后端 Python | 由 Electron 自动拉起 | 需**手动启动** FastAPI 服务 |
+| 适合做什么 | 全功能联调、最终测试 | **前端 UI/样式开发**、后端 API 开发 |
 
 ## 2. 快速开始
 
@@ -33,6 +45,8 @@ cd IELTS-mate
 ```bash
 # 安装前端依赖 (包含 React, Electron, Flux UI 相关库)
 pnpm install
+# 或在 CVM 上无 pnpm 时使用:
+# npm install
 
 # 安装 Flux Academy 风格核心依赖 (若未包含)
 pnpm add framer-motion lucide-react clsx tailwind-merge
@@ -41,8 +55,12 @@ pnpm add framer-motion lucide-react clsx tailwind-merge
 若网络环境导致 Electron 二进制下载缓慢，可临时使用镜像后重装 Electron：
 
 ```bash
+# Windows PowerShell
 $env:ELECTRON_MIRROR='https://npmmirror.com/mirrors/electron/'
 pnpm rebuild electron
+
+# Linux/Mac bash
+ELECTRON_MIRROR='https://npmmirror.com/mirrors/electron/' pnpm rebuild electron
 ```
 
 ### 2.3 后端环境搭建
@@ -63,7 +81,7 @@ conda run -n dl pip install -r backend/requirements.txt
 
 > 为避免不同终端（PowerShell/cmd）环境变量语法差异，`backend/tests/smoke_step2.py` 已支持自动处理导入路径，无需手动设置 `PYTHONPATH`。
 
-### 2.4 启动开发服务器
+### 2.4 本地启动（有 GUI 环境）
 
 ```bash
 # 一键启动 (Electron + React 热更新 + Python FastAPI)
@@ -75,6 +93,85 @@ pnpm dev
 2. **Python FastAPI**：由 Electron 主进程自动拉起（开发模式下使用 `uvicorn --reload`）
 
 > **注意**：开发模式下，Electron 主进程会自动启动 `dl` 环境中的 Python。可通过环境变量 `BACKEND_PYTHON_PATH` 显式指定解释器路径（例如 `E:\\apps\\anaconda3\\envs\\dl\\python.exe`），以避免 shell hook 差异导致的 `conda activate` 问题。
+
+### 2.5 CVM 云服务器启动（无 GUI 环境）
+
+在 CVM 等无桌面环境的 Linux 服务器上，**无法使用 `pnpm dev`**（Electron 需要 GUI）。需按以下方式分别启动前端和后端：
+
+#### 2.5.1 Node.js 版本管理（nvm）
+
+CVM 上通常没有 sudo 权限安装全局包。使用 **nvm** 在用户目录下管理 Node 版本：
+
+```bash
+# 安装 nvm（仅首次）
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
+
+# 加载 nvm（每个新终端都需要）
+export NVM_DIR="$HOME/.nvm" && . "$NVM_DIR/nvm.sh"
+
+# 安装并使用 Node 20
+nvm install 20
+nvm use 20
+```
+
+> **提示**：将 nvm 加载命令写入 `~/.bashrc` 后，新终端会自动加载。
+
+#### 2.5.2 前端预览（Vite 独立模式）
+
+项目根目录下提供了 `vite.preview.config.ts`，用于**绕过 Electron 单独启动 React 前端**：
+
+```bash
+# 确保使用 Node 20+
+export NVM_DIR="$HOME/.nvm" && . "$NVM_DIR/nvm.sh" && nvm use 20
+
+# 安装依赖（首次或 package.json 有变更时）
+npm install
+
+# 启动独立 Vite 开发服务器
+npx vite --config vite.preview.config.ts
+```
+
+启动后默认监听 `http://localhost:5173`，可通过 IDE 内置浏览器预览或端口转发到本地浏览器访问。
+
+**Vite 独立模式 vs Electron 模式的区别**：
+
+| 方面 | Vite 独立模式 | Electron 完整模式 |
+|------|-------------|-----------------|
+| 运行环境 | 纯浏览器 | Electron (Chromium + Node.js) |
+| `window.electron` API | ❌ 不可用 | ✅ 可用（preload 注入） |
+| UI/样式/布局开发 | ✅ 完全一致 | ✅ 完全一致 |
+| 后端 API 调用 | ⚠️ 需手动启动后端并配置端口 | ✅ 自动管理 |
+| 适用场景 | **前端 UI 美化、组件开发** | 完整功能联调 |
+
+> **重要**：`vite.preview.config.ts` 仅用于开发预览，不会影响最终打包。打包时仍使用 `electron-vite build`。
+
+#### 2.5.3 后端单独启动
+
+```bash
+# 进入后端目录
+cd backend
+
+# 使用 uvicorn 启动 FastAPI（热重载模式）
+python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+```
+
+> 前端需手动将 API 请求指向 `http://localhost:8000`（Vite 独立模式下 Electron IPC 不可用，需在前端 `services/api.ts` 中做回退处理）。
+
+### 2.6 从本地迁移到 CVM 的注意事项
+
+将本地项目复制到 CVM 时，请确保**不要**拷贝以下文件/目录（它们在 `.gitignore` 中已被忽略）：
+
+```
+node_modules/     # 依赖需在目标机器重新安装
+out/              # Electron 构建产物
+dist/             # 打包产物
+backend/__pycache__/
+backend/**/*.pyc
+*.db / *.sqlite   # 运行时数据库（需要则手动迁移）
+.env / .env.*     # 环境变量（含敏感信息）
+```
+
+推荐使用 `git clone` 而非直接复制文件夹，这样自然会忽略上述内容。
 
 ## 3. 项目脚本命令
 
@@ -138,8 +235,19 @@ main                    ← 稳定发布分支
 - [x] 实现 SM-2 算法 (后端)
 - [x] 词汇数据初始化 (JSON → SQLite)
 - [x] 词汇核心复习 API (`GET /api/vocabulary/review`, `POST /api/vocabulary/{id}/review`)
-- [ ] 前端 Hub 页面与玻璃闪卡 UI
-- [ ] ECharts 热力图 (适配光点风格)
+- [x] ECDICT 雅思词汇清洗脚本 (5,038 词, 含难度分级/词性/多语释义)
+- [x] 四选一干扰项 API (`GET /api/vocabulary/{id}/distractors`，支持 `mode=translation|word` 双向)
+- [x] DEV 重置 API (`POST /api/vocabulary/reset`)
+- [x] 前端 Vocabulary Service + Zustand Store (全栈联调)
+- [x] 前端 Hub 页面 (双模式入口：复习 + 新词学习，每日新词上限调节器)
+- [x] 前端 Review 页面 — 3D 翻转卡片自评模式 (认识/模糊/忘记了，SM2 quality 映射)
+- [x] 前端 Learn 页面 — 四选一 Quiz + 双轮确认 (英→中 + 中→英，错词循环，4×1 布局)
+- [x] 前端 SessionComplete 页面 (学习统计 + 操作按钮)
+- [x] 新词 API (`GET /api/vocabulary/new-words`) + 今日摘要 API (`GET /api/vocabulary/today-summary`)
+- [x] 词汇设置 API (`GET/PUT /api/settings/vocabulary`) + 前端 Settings 页词汇设置区
+- [x] `first_learned_at` 字段 + 自动迁移 + 每日新词计数
+- [ ] ECharts 热力图 (适配光点风格, 后端 API 已就绪)
+- [ ] 拼写模式 / 听写模式 (可扩展)
 
 **Phase 4 - 写作批改模块**
 - [ ] 实现 5-Agent 并行架构 (后端)

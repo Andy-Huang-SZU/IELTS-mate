@@ -2,7 +2,7 @@ import { createBrowserRouter } from 'react-router-dom'
 import { App } from './App'
 import { DashboardPage } from './pages/Dashboard'
 import { SettingsPage } from './pages/Settings'
-import { VocabularyHub, VocabularyReview } from './pages/Vocabulary'
+import { VocabularyHub, VocabularyReview, VocabularyLearn } from './pages/Vocabulary'
 import { WritingHub } from './pages/Writing'
 import { SpeakingHub } from './pages/Speaking'
 import { GlassCard, PageContainer } from './components/flux'
@@ -26,6 +26,7 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <DashboardPage /> },
       { path: 'vocabulary', element: <VocabularyHub /> },
+      { path: 'vocabulary/learn', element: <VocabularyLearn /> },
       { path: 'vocabulary/review', element: <VocabularyReview /> },
       { path: 'vocabulary/stats', element: <PlaceholderPage title="Vocabulary Stats" /> },
       { path: 'writing', element: <WritingHub /> },
