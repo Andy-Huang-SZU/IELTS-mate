@@ -5,10 +5,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db_session
 from app.schemas.vocabulary import (
+    BookmarkRequest,
+    BookmarkedWordsData,
+    BookmarkedWordsResponse,
     DistractorWordsData,
     DistractorWordsResponse,
+    MostWrongWordsData,
+    MostWrongWordsResponse,
+    MostWrongWord,
     NewWordsListData,
     NewWordsListResponse,
+    NoteRequest,
     TodaySummaryResponse,
     VocabularyHeatmapResponse,
     VocabularyItem,
@@ -21,16 +28,20 @@ from app.schemas.vocabulary import (
     VocabularyStatsResponse,
 )
 from app.services.vocabulary_service import (
+    get_bookmarked_words,
     get_distractors,
     get_due_words,
     get_heatmap_data,
     get_learning_curve_data,
+    get_most_wrong_words,
     get_new_words,
     get_today_summary,
     get_vocabulary_stats,
     reset_all_progress,
     search_vocabulary,
     submit_review,
+    toggle_bookmark,
+    update_note,
 )
 
 router = APIRouter(prefix="/api/vocabulary", tags=["vocabulary"])
@@ -53,14 +64,18 @@ async def get_review_words(
 @router.get("/new-words", response_model=NewWordsListResponse)
 async def get_new_words_endpoint(
     limit: int = Query(default=30, ge=1, le=200),
+    order: str | None = Query(default=None, regex="^(random|ielts_core|difficulty_asc|difficulty_desc|alphabetical)$"),
     session: AsyncSession = Depends(get_db_session),
 ) -> NewWordsListResponse:
-    words, today_learned, daily_limit = await get_new_words(session, limit=limit)
+    words, today_learned, daily_limit, effective_order = await get_new_words(
+        session, limit=limit, order=order
+    )
     return NewWordsListResponse(
         data=NewWordsListData(
             words=[VocabularyItem.model_validate(w) for w in words],
             today_learned=today_learned,
             daily_limit=daily_limit,
+            order=effective_order,
         )
     )
 
@@ -131,6 +146,34 @@ async def reset_progress(session: AsyncSession = Depends(get_db_session)):
     return {"success": True, "data": {"reset_count": count}, "message": "ok"}
 
 
+@router.get("/bookmarks", response_model=BookmarkedWordsResponse)
+async def get_bookmarks(
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=50, ge=1, le=200),
+    session: AsyncSession = Depends(get_db_session),
+) -> BookmarkedWordsResponse:
+    total, words = await get_bookmarked_words(session, page=page, page_size=page_size)
+    return BookmarkedWordsResponse(
+        data=BookmarkedWordsData(
+            total=total,
+            words=[VocabularyItem.model_validate(w) for w in words],
+        )
+    )
+
+
+@router.get("/most-wrong", response_model=MostWrongWordsResponse)
+async def get_most_wrong(
+    limit: int = Query(default=20, ge=1, le=100),
+    session: AsyncSession = Depends(get_db_session),
+) -> MostWrongWordsResponse:
+    words = await get_most_wrong_words(session, limit=limit)
+    return MostWrongWordsResponse(
+        data=MostWrongWordsData(
+            words=[MostWrongWord.model_validate(w) for w in words],
+        )
+    )
+
+
 @router.get("/{word_id}/distractors", response_model=DistractorWordsResponse)
 async def get_word_distractors(
     word_id: int,
@@ -141,3 +184,25 @@ async def get_word_distractors(
     """Get distractors for quiz mode. mode=translation for en->zh, mode=word for zh->en."""
     distractors = await get_distractors(session, word_id=word_id, count=count, mode=mode)
     return DistractorWordsResponse(data=DistractorWordsData(distractors=distractors))
+
+
+@router.put("/{word_id}/bookmark")
+async def bookmark_word(
+    word_id: int, request: BookmarkRequest, session: AsyncSession = Depends(get_db_session)
+):
+    try:
+        word = await toggle_bookmark(session, word_id, request.bookmarked)
+        return {"success": True, "data": VocabularyItem.model_validate(word), "message": "ok"}
+    except ValueError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+
+
+@router.put("/{word_id}/note")
+async def note_word(
+    word_id: int, request: NoteRequest, session: AsyncSession = Depends(get_db_session)
+):
+    try:
+        word = await update_note(session, word_id, request.note)
+        return {"success": True, "data": VocabularyItem.model_validate(word), "message": "ok"}
+    except ValueError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error

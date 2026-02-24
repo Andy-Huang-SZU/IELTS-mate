@@ -1,9 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, Volume2, Check, X } from 'lucide-react'
+import { ArrowLeft, Volume2, Check, X, ChevronDown, Bookmark, Pencil } from 'lucide-react'
 import { GlassCard, PageContainer } from '../../components/flux'
 import { useVocabularyStore } from '../../store/useVocabularyStore'
-import { fetchDistractors, submitReview, type VocabularyWord } from '../../services/vocabulary'
+import {
+  fetchDistractors,
+  submitReview,
+  toggleBookmark,
+  updateWordNote,
+  WORD_ORDER_OPTIONS,
+  type VocabularyWord,
+  type WordOrder,
+} from '../../services/vocabulary'
 import { SessionComplete } from './SessionComplete'
 
 type Phase = 'round1' | 'round2' | 'retry'
@@ -30,7 +38,12 @@ const PHASE_LABELS: Record<Phase, { text: string; gradient: string }> = {
 
 export function VocabularyLearn(): JSX.Element {
   const navigate = useNavigate()
-  const { newWords, loading, error, loadNewWords } = useVocabularyStore()
+  const { newWords, loading, error, loadNewWords, vocabSettings, loadVocabSettings } = useVocabularyStore()
+
+  // Order state
+  const [currentOrder, setCurrentOrder] = useState<WordOrder>('random')
+  const [showOrderMenu, setShowOrderMenu] = useState(false)
+  const orderInitialized = useRef(false)
 
   // Session state
   const [phase, setPhase] = useState<Phase>('round1')
@@ -52,6 +65,11 @@ export function VocabularyLearn(): JSX.Element {
   const [direction, setDirection] = useState<Direction>('en2zh')
   const [showDetail, setShowDetail] = useState(false)
 
+  // Bookmark & note state
+  const [isBookmarked, setIsBookmarked] = useState(false)
+  const [showNoteInput, setShowNoteInput] = useState(false)
+  const [noteText, setNoteText] = useState('')
+
   const word = queue[queueIndex] ?? null
   const totalInPhase = queue.length
   const progressInPhase = totalInPhase > 0 ? Math.min(((queueIndex + (choiceState !== 'idle' ? 1 : 0)) / totalInPhase) * 100, 100) : 0
@@ -65,8 +83,32 @@ export function VocabularyLearn(): JSX.Element {
     return () => clearInterval(timer)
   }, [sessionStartTime])
 
-  // Load new words
-  useEffect(() => { loadNewWords() }, [loadNewWords])
+  // Load settings first, then new words
+  useEffect(() => { loadVocabSettings() }, [loadVocabSettings])
+  useEffect(() => {
+    if (vocabSettings && !orderInitialized.current) {
+      const order = (vocabSettings.word_order as WordOrder) || 'random'
+      setCurrentOrder(order)
+      orderInitialized.current = true
+      loadNewWords(30, order)
+    }
+  }, [vocabSettings, loadNewWords])
+
+  // Switch order mid-session
+  const handleOrderSwitch = useCallback((order: WordOrder) => {
+    setCurrentOrder(order)
+    setShowOrderMenu(false)
+    // Reset session and reload with new order
+    allWordsRef.current = []
+    setPhase('round1')
+    setQueueIndex(0)
+    setRound1Results(new Map())
+    setWrongIds(new Set())
+    setSessionCorrect(0)
+    setSessionWrong(0)
+    setSessionDone(false)
+    loadNewWords(30, order)
+  }, [loadNewWords])
 
   // Initialize Round 1 when newWords load
   useEffect(() => {
@@ -97,6 +139,9 @@ export function VocabularyLearn(): JSX.Element {
     setChoiceState('idle')
     setSelectedIndex(null)
     setShowDetail(false)
+    setIsBookmarked(word.bookmarked ?? false)
+    setNoteText(word.note ?? '')
+    setShowNoteInput(false)
 
     const mode = direction === 'en2zh' ? 'translation' : 'word'
     const loadChoices = async () => {
@@ -202,6 +247,22 @@ export function VocabularyLearn(): JSX.Element {
     }
   }, [phase])
 
+  // Bookmark toggle
+  const handleToggleBookmark = useCallback(async () => {
+    if (!word) return
+    const next = !isBookmarked
+    setIsBookmarked(next)
+    await toggleBookmark(word.id, next)
+    if (next) setShowNoteInput(true)
+  }, [word, isBookmarked])
+
+  // Save note
+  const handleSaveNote = useCallback(async () => {
+    if (!word) return
+    await updateWordNote(word.id, noteText)
+    setShowNoteInput(false)
+  }, [word, noteText])
+
   // Keyboard shortcuts
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -211,13 +272,14 @@ export function VocabularyLearn(): JSX.Element {
         const num = parseInt(e.key)
         if (num >= 1 && num <= choices.length) { e.preventDefault(); handleSelect(num - 1) }
       } else {
-        if (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowRight') { e.preventDefault(); handleNext() }
+        if (e.key === ' ' || e.key === 'ArrowRight') { e.preventDefault(); handleNext() }
         if (e.key === 'e' || e.key === 'E') { e.preventDefault(); setShowDetail((d) => !d) }
+        if (e.key === 'n' || e.key === 'N') { e.preventDefault(); handleToggleBookmark() }
       }
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [choiceState, choices, handleSelect, handleNext])
+  }, [choiceState, choices, handleSelect, handleNext, handleToggleBookmark])
 
   const difficultyDots = useMemo(() => {
     if (!word) return []
@@ -242,14 +304,14 @@ export function VocabularyLearn(): JSX.Element {
           setSessionWrong(0)
           setRound1Results(new Map())
           setWrongIds(new Set())
-          loadNewWords()
+          loadNewWords(30, currentOrder)
         }}
       />
     )
   }
 
   // No words
-  if (!loading && newWords.length === 0) {
+  if (!loading && newWords.length === 0 && !error) {
     return (
       <PageContainer className="flex min-h-[70vh] flex-col items-center justify-center">
         <GlassCard className="max-w-sm p-8 text-center animate-fade-in" hover>
@@ -261,6 +323,32 @@ export function VocabularyLearn(): JSX.Element {
           >
             返回
           </button>
+        </GlassCard>
+      </PageContainer>
+    )
+  }
+
+  // Error state
+  if (!loading && newWords.length === 0 && error) {
+    return (
+      <PageContainer className="flex min-h-[70vh] flex-col items-center justify-center">
+        <GlassCard className="max-w-sm p-8 text-center animate-fade-in" hover>
+          <h2 className="text-lg font-semibold text-[#E17055]">加载失败</h2>
+          <p className="mt-2 text-sm text-[#636E72]">{error}</p>
+          <div className="mt-5 flex gap-3 justify-center">
+            <button
+              onClick={() => loadNewWords()}
+              className="rounded-xl bg-[#E17055] px-6 py-2.5 text-sm font-medium text-white transition-all hover:bg-[#d35f46] active:scale-95"
+            >
+              重试
+            </button>
+            <button
+              onClick={() => navigate('/vocabulary')}
+              className="rounded-xl bg-white/50 px-6 py-2.5 text-sm font-medium text-[#2D3436] backdrop-blur transition-all hover:bg-white/70 active:scale-95"
+            >
+              返回
+            </button>
+          </div>
         </GlassCard>
       </PageContainer>
     )
@@ -278,6 +366,33 @@ export function VocabularyLearn(): JSX.Element {
         >
           <ArrowLeft size={16} /> 返回
         </button>
+
+        {/* Order switcher */}
+        <div className="relative">
+          <button
+            onClick={() => setShowOrderMenu((v) => !v)}
+            className="flex items-center gap-1 rounded-lg bg-white/40 px-2.5 py-1.5 text-[11px] text-[#636E72] backdrop-blur hover:bg-white/60 transition-all"
+          >
+            {WORD_ORDER_OPTIONS.find(o => o.value === currentOrder)?.label ?? '随机'}
+            <ChevronDown size={10} className={`transition-transform ${showOrderMenu ? 'rotate-180' : ''}`} />
+          </button>
+          {showOrderMenu && (
+            <div className="absolute z-30 mt-1 left-0 min-w-[160px] rounded-xl bg-white/95 backdrop-blur-xl shadow-lg border border-white/40 overflow-hidden animate-fade-in">
+              {WORD_ORDER_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => handleOrderSwitch(opt.value)}
+                  className={`w-full text-left px-3 py-2 text-xs transition-colors hover:bg-[#00B894]/5
+                    ${currentOrder === opt.value ? 'bg-[#00B894]/10 text-[#00B894] font-semibold' : 'text-[#2D3436]'}`}
+                >
+                  <span>{opt.label}</span>
+                  <span className="block text-[10px] text-[#B2BEC3]">{opt.desc}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
         <div className="flex-1 max-w-[400px] mx-auto">
           <div className="flex justify-between mb-1">
             <span className="text-[11px] text-[#636E72]">新词学习</span>
@@ -412,28 +527,69 @@ export function VocabularyLearn(): JSX.Element {
             })}
           </div>
 
-          {/* Next button */}
+          {/* Actions after answer */}
           {choiceState !== 'idle' && (
-            <div className="w-full flex items-center justify-between animate-fade-in mb-3">
-              <button onClick={() => setShowDetail((d) => !d)} className="flex items-center gap-1.5 text-xs text-[#636E72] hover:text-[#2D3436] transition-colors">
-                {showDetail ? '收起详情' : '查看详情'}
-                <kbd className="ml-1 px-1.5 py-0.5 rounded bg-black/5 text-[10px] font-mono">E</kbd>
-              </button>
-              <button
-                onClick={handleNext}
-                className="flex items-center gap-1.5 rounded-full bg-[#E17055] px-5 py-2.5 text-sm font-medium text-white shadow-lg shadow-[#E17055]/20 transition-all hover:shadow-xl hover:scale-[1.03] active:scale-95"
-              >
-                下一个
-                <kbd className="ml-1 px-1.5 py-0.5 rounded bg-white/20 text-[10px] font-mono">↵</kbd>
-              </button>
+            <div className="w-full animate-fade-in mb-3">
+              {/* Bookmark & Note row */}
+              <div className="flex items-center gap-2 mb-3">
+                <button onClick={handleToggleBookmark}
+                  className={`flex items-center gap-1.5 rounded-xl px-3 py-2 text-[11px] transition-all border
+                    ${isBookmarked
+                      ? 'bg-[#FDCB6E]/10 border-[#FDCB6E]/30 text-[#E17055]'
+                      : 'bg-white/40 border-white/30 text-[#636E72] hover:bg-white/60'
+                    }`}
+                >
+                  <Bookmark size={12} fill={isBookmarked ? '#FDCB6E' : 'none'} />
+                  {isBookmarked ? '已收藏' : '收藏'}
+                  <kbd className="ml-1 px-1 py-0.5 rounded bg-black/5 text-[9px] font-mono">N</kbd>
+                </button>
+                {isBookmarked && !showNoteInput && noteText && (
+                  <button onClick={() => setShowNoteInput(true)}
+                    className="flex items-center gap-1 text-[10px] text-[#636E72] hover:text-[#2D3436] transition-colors">
+                    <Pencil size={10} /> 编辑笔记
+                  </button>
+                )}
+              </div>
+              {/* Note input */}
+              {showNoteInput && (
+                <div className="flex items-center gap-2 mb-3 animate-fade-in">
+                  <input
+                    value={noteText}
+                    onChange={e => setNoteText(e.target.value)}
+                    placeholder="写笔记..."
+                    className="flex-1 text-[11px] rounded-xl bg-white/50 border border-white/40 px-3 py-2 outline-none focus:border-[#00B894]/40 text-[#2D3436] backdrop-blur"
+                    autoFocus
+                    onKeyDown={e => { if (e.key === 'Enter') handleSaveNote() }}
+                  />
+                  <button onClick={handleSaveNote}
+                    className="rounded-xl bg-[#00B894]/10 px-3 py-2 text-[11px] text-[#00B894] font-medium hover:bg-[#00B894]/20 transition-colors">
+                    保存
+                  </button>
+                </div>
+              )}
+              {/* Detail + Next */}
+              <div className="flex items-center justify-between">
+                <button onClick={() => setShowDetail((d) => !d)} className="flex items-center gap-1.5 text-xs text-[#636E72] hover:text-[#2D3436] transition-colors">
+                  {showDetail ? '收起详情' : '查看详情'}
+                  <kbd className="ml-1 px-1.5 py-0.5 rounded bg-black/5 text-[10px] font-mono">E</kbd>
+                </button>
+                <button
+                  onClick={handleNext}
+                  className="flex items-center gap-1.5 rounded-full bg-[#E17055] px-5 py-2.5 text-sm font-medium text-white shadow-lg shadow-[#E17055]/20 transition-all hover:shadow-xl hover:scale-[1.03] active:scale-95"
+                >
+                  下一个
+                  <kbd className="ml-1 px-1.5 py-0.5 rounded bg-white/20 text-[10px] font-mono">Space</kbd>
+                </button>
+              </div>
             </div>
           )}
 
           {/* Keyboard hints */}
-          <div className="flex justify-center gap-5 mt-3 text-[10px] text-[#B2BEC3]">
+          <div className="flex justify-center gap-4 mt-3 text-[10px] text-[#B2BEC3]">
             <span><kbd className="px-1.5 py-0.5 rounded bg-black/5 font-mono text-[9px]">1-4</kbd> 选择</span>
-            <span><kbd className="px-1.5 py-0.5 rounded bg-black/5 font-mono text-[9px]">Enter</kbd> 下一个</span>
+            <span><kbd className="px-1.5 py-0.5 rounded bg-black/5 font-mono text-[9px]">Space</kbd> 下一个</span>
             <span><kbd className="px-1.5 py-0.5 rounded bg-black/5 font-mono text-[9px]">E</kbd> 详情</span>
+            <span><kbd className="px-1.5 py-0.5 rounded bg-black/5 font-mono text-[9px]">N</kbd> 收藏</span>
           </div>
 
           {/* Bottom stats */}

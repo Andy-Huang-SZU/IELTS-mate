@@ -1,9 +1,13 @@
 /* ===== Vocabulary API Service ===== */
 
 const getBaseUrl = async (): Promise<string> => {
-  const info = await window.electronAPI.getBackendInfo()
-  if (!info.baseUrl) throw new Error('Backend is not ready')
-  return info.baseUrl
+  // In Electron mode, get the backend URL from the main process
+  if (window.electronAPI?.getBackendInfo) {
+    const info = await window.electronAPI.getBackendInfo()
+    if (info?.baseUrl) return info.baseUrl
+  }
+  // Fallback for Vite standalone preview mode (no Electron)
+  return 'http://localhost:8000'
 }
 
 /* ---------- Types ---------- */
@@ -23,6 +27,9 @@ export interface VocabularyWord {
   status: 'new' | 'learning' | 'mastered'
   difficulty: number
   next_review: string | null
+  bookmarked?: boolean
+  note?: string
+  wrong_count?: number
 }
 
 export interface ReviewListResponse {
@@ -75,12 +82,23 @@ export interface TodaySummaryResponse {
 
 export interface NewWordsListResponse {
   success: boolean
-  data: { words: VocabularyWord[]; today_learned: number; daily_limit: number }
+  data: { words: VocabularyWord[]; today_learned: number; daily_limit: number; order: string }
   message: string
 }
 
+export type WordOrder = 'random' | 'ielts_core' | 'difficulty_asc' | 'difficulty_desc' | 'alphabetical'
+
+export const WORD_ORDER_OPTIONS: { value: WordOrder; label: string; desc: string }[] = [
+  { value: 'random', label: '随机', desc: '随机打乱顺序' },
+  { value: 'ielts_core', label: '雅思核心优先', desc: '难度 3→4→2→5→1' },
+  { value: 'difficulty_asc', label: '由易到难', desc: '从简单词开始' },
+  { value: 'difficulty_desc', label: '由难到易', desc: '从高难度词开始' },
+  { value: 'alphabetical', label: '字母序', desc: 'A → Z 排列' },
+]
+
 export interface VocabSettings {
   daily_new_words_limit: number
+  word_order?: WordOrder
 }
 
 export interface VocabSettingsResponse {
@@ -104,9 +122,11 @@ export const fetchReviewWords = async (limit = 20): Promise<ReviewListResponse> 
   return (await res.json()) as ReviewListResponse
 }
 
-export const fetchNewWords = async (limit = 30): Promise<NewWordsListResponse> => {
+export const fetchNewWords = async (limit = 30, order?: WordOrder): Promise<NewWordsListResponse> => {
   const baseUrl = await getBaseUrl()
-  const res = await fetch(`${baseUrl}/api/vocabulary/new-words?limit=${limit}`)
+  const params = new URLSearchParams({ limit: String(limit) })
+  if (order) params.set('order', order)
+  const res = await fetch(`${baseUrl}/api/vocabulary/new-words?${params}`)
   if (!res.ok) throw new Error(`Failed to fetch new words: ${res.status}`)
   return (await res.json()) as NewWordsListResponse
 }
@@ -173,4 +193,105 @@ export const updateVocabSettings = async (settings: VocabSettings): Promise<Voca
   })
   if (!res.ok) throw new Error(`Failed to update vocab settings: ${res.status}`)
   return (await res.json()) as VocabSettingsResponse
+}
+
+/* ---------- Heatmap ---------- */
+
+export interface HeatmapPoint {
+  date: string
+  count: number
+}
+
+export interface HeatmapResponse {
+  success: boolean
+  data: { year: number; data: HeatmapPoint[] }
+  message: string
+}
+
+export const fetchHeatmap = async (year?: number): Promise<HeatmapResponse> => {
+  const baseUrl = await getBaseUrl()
+  const params = year ? `?year=${year}` : ''
+  const res = await fetch(`${baseUrl}/api/vocabulary/heatmap${params}`)
+  if (!res.ok) throw new Error(`Failed to fetch heatmap: ${res.status}`)
+  return (await res.json()) as HeatmapResponse
+}
+
+/* ---------- Learning Curve ---------- */
+
+export interface LearningCurveResponse {
+  success: boolean
+  data: { dates: string[]; mastered: number[]; learning: number[] }
+  message: string
+}
+
+export const fetchLearningCurve = async (days = 30): Promise<LearningCurveResponse> => {
+  const baseUrl = await getBaseUrl()
+  const res = await fetch(`${baseUrl}/api/vocabulary/learning-curve?days=${days}`)
+  if (!res.ok) throw new Error(`Failed to fetch learning curve: ${res.status}`)
+  return (await res.json()) as LearningCurveResponse
+}
+
+/* ---------- Bookmark / Note ---------- */
+
+export const toggleBookmark = async (wordId: number, bookmarked: boolean) => {
+  const baseUrl = await getBaseUrl()
+  const res = await fetch(`${baseUrl}/api/vocabulary/${wordId}/bookmark`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ bookmarked })
+  })
+  if (!res.ok) throw new Error(`Failed to toggle bookmark: ${res.status}`)
+  return await res.json()
+}
+
+export const updateWordNote = async (wordId: number, note: string) => {
+  const baseUrl = await getBaseUrl()
+  const res = await fetch(`${baseUrl}/api/vocabulary/${wordId}/note`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ note })
+  })
+  if (!res.ok) throw new Error(`Failed to update note: ${res.status}`)
+  return await res.json()
+}
+
+export interface BookmarkedWordsResponse {
+  success: boolean
+  data: { total: number; words: VocabularyWord[] }
+  message: string
+}
+
+export const fetchBookmarkedWords = async (page = 1, pageSize = 50): Promise<BookmarkedWordsResponse> => {
+  const baseUrl = await getBaseUrl()
+  const res = await fetch(`${baseUrl}/api/vocabulary/bookmarks?page=${page}&page_size=${pageSize}`)
+  if (!res.ok) throw new Error(`Failed to fetch bookmarks: ${res.status}`)
+  return (await res.json()) as BookmarkedWordsResponse
+}
+
+/* ---------- Most Wrong ---------- */
+
+export interface MostWrongWord {
+  id: number
+  word: string
+  translation: string
+  phonetic: string
+  pos: string
+  wrong_count: number
+  difficulty: number
+  status: string
+  bookmarked: boolean
+  note: string
+}
+
+export interface MostWrongWordsResponse {
+  success: boolean
+  data: { words: MostWrongWord[] }
+  message: string
+}
+
+export const fetchMostWrongWords = async (limit = 20): Promise<MostWrongWordsResponse> => {
+  const baseUrl = await getBaseUrl()
+  const res = await fetch(`${baseUrl}/api/vocabulary/most-wrong?limit=${limit}`)
+  if (!res.ok) throw new Error(`Failed to fetch most wrong words: ${res.status}`)
+  return (await res.json()) as MostWrongWordsResponse
 }

@@ -20,6 +20,9 @@ class VocabularyItem(BaseModel):
     status: str
     difficulty: int = 3
     next_review: date | None
+    bookmarked: bool = False
+    note: str = ""
+    wrong_count: int = 0
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -131,6 +134,7 @@ class NewWordsListData(BaseModel):
     words: list[VocabularyItem]
     today_learned: int
     daily_limit: int
+    order: str = "random"
 
 
 class NewWordsListResponse(BaseModel):
@@ -141,6 +145,7 @@ class NewWordsListResponse(BaseModel):
 
 class VocabSettingsData(BaseModel):
     daily_new_words_limit: int = 30
+    word_order: str = "random"  # random | ielts_core | difficulty_asc | difficulty_desc | alphabetical
 
 
 class VocabSettingsResponse(BaseModel):
@@ -156,4 +161,51 @@ class DistractorWordsData(BaseModel):
 class DistractorWordsResponse(BaseModel):
     success: bool = True
     data: DistractorWordsData
+    message: str = "ok"
+
+
+# ---- Bookmark / Note / Most-wrong schemas ----
+
+
+class BookmarkRequest(BaseModel):
+    bookmarked: bool
+
+
+class NoteRequest(BaseModel):
+    note: str
+
+
+class BookmarkedWordsData(BaseModel):
+    total: int
+    words: list[VocabularyItem]
+
+
+class BookmarkedWordsResponse(BaseModel):
+    success: bool = True
+    data: BookmarkedWordsData
+    message: str = "ok"
+
+
+class MostWrongWord(BaseModel):
+    id: int
+    word: str
+    translation: str
+    phonetic: str = ""
+    pos: str = ""
+    wrong_count: int
+    difficulty: int = 3
+    status: str = "new"
+    bookmarked: bool = False
+    note: str = ""
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class MostWrongWordsData(BaseModel):
+    words: list[MostWrongWord]
+
+
+class MostWrongWordsResponse(BaseModel):
+    success: bool = True
+    data: MostWrongWordsData
     message: str = "ok"

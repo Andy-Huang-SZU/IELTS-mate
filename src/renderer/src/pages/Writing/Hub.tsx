@@ -1,16 +1,33 @@
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { BarChart3, Feather } from 'lucide-react'
+import { BarChart3, Feather, FileText, Loader2 } from 'lucide-react'
 import { GlassCard, PageContainer } from '../../components/flux'
-
-const MOCK_RECENT = [
-  { id: '1', title: 'Task 2: Technology & Society', date: '2025-02-17', score: null },
-  { id: '2', title: 'Task 1: Line chart - Population', date: '2025-02-15', score: 6.5 },
-]
+import { fetchWritingSessions, type SessionListItem } from '../../services/writing'
 
 /**
- * 写作中心 - 文档：New Task 1 / New Task 2 大入口卡 + Recent Essays 半透明列表
+ * 写作中心 - New Task 1 / New Task 2 大入口卡 + Recent Essays 真实数据
  */
 export function WritingHub(): JSX.Element {
+  const [sessions, setSessions] = useState<SessionListItem[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetchWritingSessions('all', 1, 10)
+      .then(r => setSessions(r.data.sessions))
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [])
+
+  const formatDate = (iso: string) => {
+    const d = new Date(iso)
+    const now = new Date()
+    const diff = Math.floor((now.getTime() - d.getTime()) / 86400000)
+    if (diff === 0) return 'Today'
+    if (diff === 1) return 'Yesterday'
+    if (diff < 7) return `${diff} days ago`
+    return d.toLocaleDateString()
+  }
+
   return (
     <PageContainer>
       <h1 className="sr-only">Writing Hub</h1>
@@ -47,24 +64,41 @@ export function WritingHub(): JSX.Element {
       <section className="mt-8 animate-fade-in" style={{ animationDelay: '0.1s' }}>
         <h3 className="mb-4 text-sm font-medium text-[#636E72]">Recent Essays</h3>
         <GlassCard className="overflow-hidden" hover>
-          <ul className="divide-y divide-[#636E72]/10">
-            {MOCK_RECENT.map((item) => (
-              <li key={item.id}>
-                <Link
-                  to={`/writing/editor?id=${item.id}`}
-                  className="flex items-center justify-between px-6 py-4 transition-colors hover:bg-white/30"
-                >
-                  <div>
-                    <p className="font-medium text-[#2D3436]">{item.title}</p>
-                    <p className="text-xs text-[#636E72]">{item.date}</p>
-                  </div>
-                  {item.score != null && (
-                    <span className="text-sm font-medium text-[#E17055]">{item.score}</span>
-                  )}
-                </Link>
-              </li>
-            ))}
-          </ul>
+          {loading ? (
+            <div className="flex items-center justify-center py-10">
+              <Loader2 size={20} className="text-[#B2BEC3] animate-spin" />
+            </div>
+          ) : sessions.length === 0 ? (
+            <div className="flex flex-col items-center gap-2 py-10">
+              <FileText size={28} className="text-[#B2BEC3]" />
+              <p className="text-xs text-[#B2BEC3]">还没有写作记录</p>
+              <p className="text-[10px] text-[#B2BEC3]/70">选择上方的 Task 开始写作吧</p>
+            </div>
+          ) : (
+            <ul className="divide-y divide-[#636E72]/10">
+              {sessions.map((item) => (
+                <li key={item.id}>
+                  <Link
+                    to={`/writing/report/${item.id}`}
+                    className="flex items-center justify-between px-6 py-4 transition-colors hover:bg-white/30"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium text-[#2D3436] truncate">
+                        {item.task_type === 'part_a' ? 'Task 1' : 'Task 2'}: {item.topic.slice(0, 60)}
+                        {item.topic.length > 60 ? '...' : ''}
+                      </p>
+                      <p className="text-xs text-[#636E72]">{formatDate(item.created_at)}</p>
+                    </div>
+                    {item.overall_score != null && (
+                      <span className="ml-3 shrink-0 rounded-full bg-[#E17055]/10 px-2.5 py-0.5 text-xs font-semibold text-[#E17055]">
+                        {item.overall_score}
+                      </span>
+                    )}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
         </GlassCard>
       </section>
     </PageContainer>

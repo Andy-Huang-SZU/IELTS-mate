@@ -4,7 +4,7 @@ import json
 from datetime import date, datetime, time, timedelta
 from pathlib import Path
 
-from sqlalchemy import and_, func, or_, select
+from sqlalchemy import and_, case, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.vocabulary import Vocabulary
@@ -101,6 +101,10 @@ async def submit_review(
         word.status = "learning"
     else:
         word.status = "new"
+
+    # Track wrong answers
+    if quality <= 1:
+        word.wrong_count = (word.wrong_count or 0) + 1
 
     # Record first learning date
     if word.status in ("learning", "mastered") and not word.first_learned_at:
@@ -326,9 +330,35 @@ async def get_distractors(
     return random.sample(candidates, min(count, len(candidates)))
 
 
-async def get_new_words(session: AsyncSession, limit: int) -> tuple[list[Vocabulary], int, int]:
+def _build_order_clause(order: str):
+    """Return SQLAlchemy order_by clause(s) based on the chosen strategy."""
+    if order == "ielts_core":
+        return [
+            case(
+                (Vocabulary.difficulty == 3, 0),
+                (Vocabulary.difficulty == 4, 1),
+                (Vocabulary.difficulty == 2, 2),
+                (Vocabulary.difficulty == 5, 3),
+                else_=4,
+            ),
+            func.random(),
+        ]
+    elif order == "difficulty_asc":
+        return [Vocabulary.difficulty.asc(), func.random()]
+    elif order == "difficulty_desc":
+        return [Vocabulary.difficulty.desc(), func.random()]
+    elif order == "alphabetical":
+        return [Vocabulary.word.asc()]
+    else:  # "random" (default)
+        return [func.random()]
+
+
+async def get_new_words(
+    session: AsyncSession, limit: int, order: str | None = None
+) -> tuple[list[Vocabulary], int, int, str]:
     """
-    Get new words for learning. Returns (words, today_learned_count, daily_limit).
+    Get new words for learning.
+    Returns (words, today_learned_count, daily_limit, effective_order).
     Only returns words that have never been learned (status='new' AND repetition=0).
     """
     from app.services.settings_service import get_vocab_settings
@@ -336,6 +366,7 @@ async def get_new_words(session: AsyncSession, limit: int) -> tuple[list[Vocabul
     today = date.today()
     settings = await get_vocab_settings(session)
     daily_limit = settings.daily_new_words_limit
+    effective_order = order or settings.word_order or "random"
 
     # Count how many new words were first learned today
     today_learned = int(
@@ -351,16 +382,16 @@ async def get_new_words(session: AsyncSession, limit: int) -> tuple[list[Vocabul
     actual_limit = min(limit, remaining)
 
     if actual_limit <= 0:
-        return [], today_learned, daily_limit
+        return [], today_learned, daily_limit, effective_order
 
     words_result = await session.execute(
         select(Vocabulary)
         .where(and_(Vocabulary.status == "new", Vocabulary.repetition == 0))
-        .order_by(Vocabulary.difficulty.asc(), Vocabulary.id.asc())
+        .order_by(*_build_order_clause(effective_order))
         .limit(actual_limit)
     )
     words = list(words_result.scalars().all())
-    return words, today_learned, daily_limit
+    return words, today_learned, daily_limit, effective_order
 
 
 async def get_today_summary(session: AsyncSession) -> TodaySummaryData:
@@ -417,3 +448,56 @@ async def get_today_summary(session: AsyncSession) -> TodaySummaryData:
         new_words_remaining=new_words_remaining,
         total_new_words=total_new_words,
     )
+
+
+# ---- Bookmark / Note / Most-wrong services ----
+
+
+async def toggle_bookmark(session: AsyncSession, word_id: int, bookmarked: bool) -> Vocabulary:
+    word = await session.get(Vocabulary, word_id)
+    if not word:
+        raise ValueError("word not found")
+    word.bookmarked = bookmarked
+    await session.commit()
+    return word
+
+
+async def update_note(session: AsyncSession, word_id: int, note: str) -> Vocabulary:
+    word = await session.get(Vocabulary, word_id)
+    if not word:
+        raise ValueError("word not found")
+    word.note = note
+    await session.commit()
+    return word
+
+
+async def get_bookmarked_words(session: AsyncSession, page: int = 1, page_size: int = 50) -> tuple[int, list[Vocabulary]]:
+    page = max(1, page)
+    page_size = max(1, min(page_size, 200))
+    total = int(
+        (await session.execute(
+            select(func.count(Vocabulary.id)).where(Vocabulary.bookmarked == True)
+        )).scalar_one() or 0
+    )
+    words = list(
+        (await session.execute(
+            select(Vocabulary)
+            .where(Vocabulary.bookmarked == True)
+            .order_by(Vocabulary.updated_at.desc())
+            .offset((page - 1) * page_size)
+            .limit(page_size)
+        )).scalars().all()
+    )
+    return total, words
+
+
+async def get_most_wrong_words(session: AsyncSession, limit: int = 20) -> list[Vocabulary]:
+    words = list(
+        (await session.execute(
+            select(Vocabulary)
+            .where(Vocabulary.wrong_count > 0)
+            .order_by(Vocabulary.wrong_count.desc())
+            .limit(limit)
+        )).scalars().all()
+    )
+    return words

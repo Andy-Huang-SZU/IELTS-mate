@@ -3,7 +3,7 @@ import { App } from './App'
 import { DashboardPage } from './pages/Dashboard'
 import { SettingsPage } from './pages/Settings'
 import { VocabularyHub, VocabularyReview, VocabularyLearn } from './pages/Vocabulary'
-import { WritingHub } from './pages/Writing'
+import { WritingHub, WritingEditor, WritingReport } from './pages/Writing'
 import { SpeakingHub } from './pages/Speaking'
 import { GlassCard, PageContainer } from './components/flux'
 
@@ -30,7 +30,8 @@ export const router = createBrowserRouter([
       { path: 'vocabulary/review', element: <VocabularyReview /> },
       { path: 'vocabulary/stats', element: <PlaceholderPage title="Vocabulary Stats" /> },
       { path: 'writing', element: <WritingHub /> },
-      { path: 'writing/editor', element: <PlaceholderPage title="Writing Editor" subtitle="编辑器开发中" /> },
+      { path: 'writing/editor', element: <WritingEditor /> },
+      { path: 'writing/report/:id', element: <WritingReport /> },
       { path: 'writing/history', element: <PlaceholderPage title="Writing History" /> },
       { path: 'speaking', element: <SpeakingHub /> },
       { path: 'speaking/chat', element: <PlaceholderPage title="Speaking Chat" subtitle="自由对话模式开发中" /> },

@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, Volume2, X, HelpCircle, Check, RotateCcw } from 'lucide-react'
+import { ArrowLeft, Volume2, X, HelpCircle, Check, RotateCcw, Bookmark, Pencil } from 'lucide-react'
 import { GlassCard, PageContainer } from '../../components/flux'
 import { useVocabularyStore } from '../../store/useVocabularyStore'
-import { submitReview } from '../../services/vocabulary'
+import { submitReview, toggleBookmark, updateWordNote } from '../../services/vocabulary'
 import { SessionComplete } from './SessionComplete'
 
 const BATCH_SIZE = 20
@@ -19,6 +19,11 @@ export function VocabularyReview(): JSX.Element {
   const [elapsedStr, setElapsedStr] = useState('0:00')
   const [answered, setAnswered] = useState(false)
   const [localIndex, setLocalIndex] = useState(0)
+
+  // Bookmark & note
+  const [isBookmarked, setIsBookmarked] = useState(false)
+  const [showNoteInput, setShowNoteInput] = useState(false)
+  const [noteText, setNoteText] = useState('')
 
   const word = localIndex < words.length ? words[localIndex] : null
   const progress = words.length > 0 ? Math.min(((localIndex + (answered ? 1 : 0)) / words.length) * 100, 100) : 0
@@ -39,7 +44,12 @@ export function VocabularyReview(): JSX.Element {
   useEffect(() => {
     setFlipped(false)
     setAnswered(false)
-  }, [localIndex])
+    setShowNoteInput(false)
+    if (word) {
+      setIsBookmarked(word.bookmarked ?? false)
+      setNoteText(word.note ?? '')
+    }
+  }, [localIndex, word])
 
   const difficultyDots = useMemo(() => {
     if (!word) return []
@@ -65,6 +75,22 @@ export function VocabularyReview(): JSX.Element {
     }, 400)
   }, [word, answered])
 
+  // Bookmark toggle
+  const handleToggleBookmark = useCallback(async () => {
+    if (!word) return
+    const next = !isBookmarked
+    setIsBookmarked(next)
+    await toggleBookmark(word.id, next)
+    if (next) setShowNoteInput(true)
+  }, [word, isBookmarked])
+
+  // Save note
+  const handleSaveNote = useCallback(async () => {
+    if (!word) return
+    await updateWordNote(word.id, noteText)
+    setShowNoteInput(false)
+  }, [word, noteText])
+
   // Keyboard shortcuts
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -77,11 +103,12 @@ export function VocabularyReview(): JSX.Element {
         if (e.key === '1') { e.preventDefault(); handleRate(0) }
         if (e.key === '2') { e.preventDefault(); handleRate(2) }
         if (e.key === '3') { e.preventDefault(); handleRate(3) }
+        if (e.key === 'n' || e.key === 'N') { e.preventDefault(); handleToggleBookmark() }
       }
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [flipped, answered, handleFlip, handleRate])
+  }, [flipped, answered, handleFlip, handleRate, handleToggleBookmark])
 
   const handleReset = useCallback(async () => {
     if (!window.confirm('重置所有词汇进度？所有单词将回到"新词"状态。')) return
@@ -257,12 +284,54 @@ export function VocabularyReview(): JSX.Element {
             </div>
           )}
 
+          {/* Bookmark & Note — shown when card is flipped */}
+          {flipped && (
+            <div className="w-full animate-fade-in mb-2">
+              <div className="flex items-center gap-2 mb-2">
+                <button onClick={handleToggleBookmark}
+                  className={`flex items-center gap-1.5 rounded-xl px-3 py-2 text-[11px] transition-all border
+                    ${isBookmarked
+                      ? 'bg-[#FDCB6E]/10 border-[#FDCB6E]/30 text-[#E17055]'
+                      : 'bg-white/40 border-white/30 text-[#636E72] hover:bg-white/60'
+                    }`}
+                >
+                  <Bookmark size={12} fill={isBookmarked ? '#FDCB6E' : 'none'} />
+                  {isBookmarked ? '已收藏' : '收藏'}
+                  <kbd className="ml-1 px-1 py-0.5 rounded bg-black/5 text-[9px] font-mono">N</kbd>
+                </button>
+                {isBookmarked && !showNoteInput && noteText && (
+                  <button onClick={() => setShowNoteInput(true)}
+                    className="flex items-center gap-1 text-[10px] text-[#636E72] hover:text-[#2D3436] transition-colors">
+                    <Pencil size={10} /> 编辑笔记
+                  </button>
+                )}
+              </div>
+              {showNoteInput && (
+                <div className="flex items-center gap-2 mb-2 animate-fade-in">
+                  <input
+                    value={noteText}
+                    onChange={e => setNoteText(e.target.value)}
+                    placeholder="写笔记..."
+                    className="flex-1 text-[11px] rounded-xl bg-white/50 border border-white/40 px-3 py-2 outline-none focus:border-[#00B894]/40 text-[#2D3436] backdrop-blur"
+                    autoFocus
+                    onKeyDown={e => { if (e.key === 'Enter') handleSaveNote() }}
+                  />
+                  <button onClick={handleSaveNote}
+                    className="rounded-xl bg-[#00B894]/10 px-3 py-2 text-[11px] text-[#00B894] font-medium hover:bg-[#00B894]/20 transition-colors">
+                    保存
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Keyboard hints */}
-          <div className="flex justify-center gap-5 mt-3 text-[10px] text-[#B2BEC3]">
+          <div className="flex justify-center gap-4 mt-3 text-[10px] text-[#B2BEC3]">
             <span><kbd className="px-1.5 py-0.5 rounded bg-black/5 font-mono text-[9px]">Space</kbd> 翻转</span>
             <span><kbd className="px-1.5 py-0.5 rounded bg-black/5 font-mono text-[9px]">1</kbd> 忘记</span>
             <span><kbd className="px-1.5 py-0.5 rounded bg-black/5 font-mono text-[9px]">2</kbd> 模糊</span>
             <span><kbd className="px-1.5 py-0.5 rounded bg-black/5 font-mono text-[9px]">3</kbd> 认识</span>
+            <span><kbd className="px-1.5 py-0.5 rounded bg-black/5 font-mono text-[9px]">N</kbd> 收藏</span>
           </div>
 
           {/* Stats */}

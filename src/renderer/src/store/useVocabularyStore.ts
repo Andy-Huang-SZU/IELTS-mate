@@ -11,7 +11,8 @@ import {
   type VocabularyWord,
   type VocabularyStats,
   type TodaySummary,
-  type VocabSettings
+  type VocabSettings,
+  type WordOrder,
 } from '@renderer/services/vocabulary'
 
 interface VocabularyState {
@@ -32,7 +33,7 @@ interface VocabularyState {
 
   /* actions */
   loadReviewWords: (limit?: number) => Promise<void>
-  loadNewWords: (limit?: number) => Promise<void>
+  loadNewWords: (limit?: number, order?: WordOrder) => Promise<void>
   loadTodaySummary: () => Promise<void>
   loadVocabSettings: () => Promise<void>
   updateVocabSettings: (settings: VocabSettings) => Promise<void>
@@ -71,10 +72,10 @@ export const useVocabularyStore = create<VocabularyState>((set, get) => ({
     }
   },
 
-  loadNewWords: async (limit = 30) => {
+  loadNewWords: async (limit = 30, order?: WordOrder) => {
     set({ loading: true, error: null })
     try {
-      const res = await fetchNewWords(limit)
+      const res = await fetchNewWords(limit, order)
       set({
         newWords: res.data.words,
         loading: false

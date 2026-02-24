@@ -1,10 +1,11 @@
-import { BookOpen, Flame, Target, TrendingUp, Sparkles, MessageCircle, Clock, ArrowRight, Calendar, Zap } from 'lucide-react'
+import { BookOpen, Flame, Target, TrendingUp, Sparkles, MessageCircle, ArrowRight, Zap, RotateCcw } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { GlassCard, PageContainer } from '../../components/flux'
-
-const MONTHS = ['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D']
-const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+import {
+  fetchVocabularyStats, fetchTodaySummary, fetchHeatmap,
+  type VocabularyStats, type TodaySummary, type HeatmapPoint,
+} from '../../services/vocabulary'
 
 function getGreeting(): { greeting: string; subtitle: string } {
   const hour = new Date().getHours()
@@ -14,19 +15,176 @@ function getGreeting(): { greeting: string; subtitle: string } {
   return { greeting: 'Night owl mode,', subtitle: 'Quiet hours, deep focus.' }
 }
 
-const HEATMAP_SEED = [0, 0.2, 0.5, 0.8, 1, 0.9, 0.7, 0, 0.3, 0.6, 0.4, 0, 0, 0.8, 1, 0.5, 0.3, 0, 0.6, 0.9, 0.7, 0.4, 0, 0.2, 0.5, 0.8, 0.4, 0.7, 0.9, 0.6, 0.2, 0]
-const HEATMAP_DATA = Array.from({ length: 4 * 12 }, (_, i) => HEATMAP_SEED[i % HEATMAP_SEED.length])
+/* ──── Real heatmap component ──── */
+function ConsistencyHeatmap({ streakDays }: { streakDays: number }) {
+  const [heatData, setHeatData] = useState<HeatmapPoint[]>([])
+  const gridRef = useRef<HTMLDivElement>(null)
+  const [rowCount, setRowCount] = useState(8)
+  const year = new Date().getFullYear()
 
-/* 快捷入口 */
-const QUICK_ACTIONS = [
-  { label: 'Review Words', desc: '32 words due', path: '/vocabulary', color: '#5EEAD4' },
-  { label: 'Writing Task', desc: 'Task 2 practice', path: '/writing', color: '#E17055' },
-  { label: 'Speaking', desc: 'Free chat', path: '/speaking', color: '#A78BFA' },
-]
+  useEffect(() => {
+    fetchHeatmap(year).then(r => setHeatData(r.data.data)).catch(() => {})
+  }, [year])
+
+  // Auto-fit row count based on available grid height
+  useEffect(() => {
+    const el = gridRef.current
+    if (!el) return
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const rowH = 22 // 16px dot + 6px gap
+        const rows = Math.max(4, Math.floor(entry.contentRect.height / rowH))
+        setRowCount(rows)
+      }
+    })
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
+
+  const { rows, maxCount, activeDays } = useMemo(() => {
+    const map = new Map(heatData.map(p => [p.date, p.count]))
+    const today = new Date()
+    const totalDays = rowCount * 7
+    let max = 0
+    let active = 0
+
+    const startDate = new Date(today)
+    startDate.setDate(startDate.getDate() - totalDays + 1)
+    while (startDate.getDay() !== 1) startDate.setDate(startDate.getDate() - 1)
+
+    const cells: { date: string; count: number }[] = []
+    const d = new Date(startDate)
+    while (d <= today) {
+      const dateStr = d.toISOString().slice(0, 10)
+      const count = map.get(dateStr) ?? 0
+      if (count > max) max = count
+      if (count > 0) active++
+      cells.push({ date: dateStr, count })
+      d.setDate(d.getDate() + 1)
+    }
+    while (cells.length % 7 !== 0) cells.push({ date: '', count: -1 })
+
+    const allRows: typeof cells[] = []
+    for (let i = 0; i < cells.length; i += 7) allRows.push(cells.slice(i, i + 7))
+    return { rows: allRows.slice(-rowCount), maxCount: max, activeDays: active }
+  }, [heatData, year, rowCount])
+
+  const getColor = (count: number) => {
+    if (count < 0) return 'transparent'
+    if (count === 0) return 'rgba(203, 213, 225, 0.3)'
+    const r = maxCount > 0 ? count / maxCount : 0
+    if (r < 0.25) return 'rgba(225, 112, 85, 0.25)'
+    if (r < 0.5) return 'rgba(225, 112, 85, 0.45)'
+    if (r < 0.75) return 'rgba(225, 112, 85, 0.7)'
+    return '#E17055'
+  }
+
+  const DAYS = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
+  const getWeekLabel = (week: { date: string }[]) => {
+    const first = week.find(c => c.date)
+    if (!first?.date) return ''
+    return first.date.slice(5) // "02-10"
+  }
+
+  return (
+    <div className="flex h-full flex-col">
+      {/* Header */}
+      <div className="mb-3 flex items-center justify-between shrink-0">
+        <div className="flex items-center gap-2">
+          <Flame className="text-[#E17055]" size={18} />
+          <h3 className="text-sm font-medium text-[#2D3436]">Consistency</h3>
+        </div>
+        <div className="flex items-center gap-1.5 rounded-full bg-[#E17055]/8 px-2.5 py-1">
+          <Flame size={11} className="text-[#E17055]" />
+          <span className="text-[11px] font-semibold text-[#E17055]">{streakDays}d</span>
+        </div>
+      </div>
+
+      {/* Day header row */}
+      <div className="flex items-center shrink-0 mb-1">
+        <span className="w-10 shrink-0" />
+        <div className="flex-1 grid grid-cols-7 gap-px">
+          {DAYS.map((d, i) => (
+            <span key={i} className="text-center text-[9px] font-medium text-[#B2BEC3]">{d}</span>
+          ))}
+        </div>
+      </div>
+
+      {/* Weeks grid */}
+      <div ref={gridRef} className="flex-1 flex flex-col justify-end gap-1.5 min-h-0">
+        {rows.map((week, wi) => (
+          <div key={wi} className="flex items-center">
+            <span className="w-10 shrink-0 text-[9px] text-[#B2BEC3] tabular-nums pr-1.5 text-right">
+              {getWeekLabel(week)}
+            </span>
+            <div className="flex-1 grid grid-cols-7 gap-px">
+              {week.map((cell, di) => (
+                <div key={di} className="flex items-center justify-center">
+                  <div
+                    className="w-4 h-4 rounded-[5px] transition-all duration-200 hover:scale-[1.3]"
+                    style={{
+                      backgroundColor: getColor(cell.count),
+                      boxShadow: cell.count > 0 && maxCount > 0 && cell.count / maxCount > 0.6
+                        ? '0 0 6px rgba(225,112,85,0.35)' : 'none',
+                    }}
+                    title={cell.date ? `${cell.date}: ${cell.count} words` : ''}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Footer legend */}
+      <div className="mt-2.5 flex items-center justify-between shrink-0">
+        <span className="text-[10px] text-[#B2BEC3]">{activeDays} active days</span>
+        <div className="flex items-center gap-1">
+          <span className="text-[9px] text-[#B2BEC3]">Less</span>
+          {[0, 0.25, 0.5, 0.75, 1].map((v, i) => (
+            <div key={i} className="w-2.5 h-2.5 rounded-[3px]"
+              style={{ backgroundColor: v === 0 ? 'rgba(203,213,225,0.3)' : `rgba(225,112,85,${0.25 + v * 0.75})` }} />
+          ))}
+          <span className="text-[9px] text-[#B2BEC3]">More</span>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 export function DashboardPage(): JSX.Element {
   const navigate = useNavigate()
   const { greeting, subtitle } = useMemo(getGreeting, [])
+
+  // Real data
+  const [vocabStats, setVocabStats] = useState<VocabularyStats | null>(null)
+  const [todaySummary, setTodaySummary] = useState<TodaySummary | null>(null)
+
+  useEffect(() => {
+    fetchVocabularyStats().then(r => setVocabStats(r.data)).catch(() => {})
+    fetchTodaySummary().then(r => setTodaySummary(r.data)).catch(() => {})
+  }, [])
+
+  // Computed values
+  const totalWords = vocabStats?.total_words ?? 0
+  const masteredWords = vocabStats?.mastered_words ?? 0
+  const masteryPct = totalWords > 0 ? Math.round((masteredWords / totalWords) * 100) : 0
+  const dueReview = todaySummary?.due_review ?? 0
+  const todayLearned = todaySummary?.new_words_learned_today ?? 0
+  const dailyLimit = todaySummary?.daily_new_words_limit ?? 30
+  const streakDays = vocabStats?.streak_days ?? 0
+
+  // Dynamic quick actions
+  const quickActions = useMemo(() => [
+    {
+      label: 'Review Words',
+      desc: dueReview > 0 ? `${dueReview} words due` : 'All caught up!',
+      path: '/vocabulary',
+      color: '#5EEAD4',
+    },
+    { label: 'Writing Task', desc: 'Task 2 practice', path: '/writing', color: '#E17055' },
+    { label: 'Speaking', desc: 'Free chat', path: '/speaking', color: '#A78BFA' },
+  ], [dueReview])
 
   /* ===== Hero Orb 鼠标视差 ===== */
   const orbRef = useRef<HTMLDivElement>(null)
@@ -275,7 +433,7 @@ export function DashboardPage(): JSX.Element {
                 <p className="mt-1.5 text-sm text-[#636E72] italic">{subtitle}</p>
                 <p className="mt-3 text-sm font-medium text-[#E17055]">
                   <Sparkles className="inline -mt-0.5 mr-1" size={14} />
-                  Focus: Writing Task 2
+                  {dueReview > 0 ? `${dueReview} words to review` : todayLearned < dailyLimit ? `${dailyLimit - todayLearned} new words left today` : 'All done for today!'}
                 </p>
               </div>
             </div>
@@ -287,7 +445,7 @@ export function DashboardPage(): JSX.Element {
             <div className="space-y-2">
               <p className="text-xs font-medium text-[#636E72] uppercase tracking-wider">Quick Start</p>
               <div className="flex flex-col gap-2">
-                {QUICK_ACTIONS.map((action) => (
+                {quickActions.map((action) => (
                   <button
                     key={action.path}
                     onClick={() => navigate(action.path)}
@@ -325,13 +483,13 @@ export function DashboardPage(): JSX.Element {
               {/* 学习统计 */}
               <div className="flex items-center justify-between rounded-xl bg-white/30 px-3 py-2.5">
                 <div className="flex items-center gap-2 text-xs text-[#636E72]">
-                  <Clock size={12} className="shrink-0" />
-                  <span>Today: <strong className="text-[#2D3436]">1h 24m</strong></span>
+                  <BookOpen size={12} className="shrink-0" />
+                  <span>Today: <strong className="text-[#2D3436]">{todayLearned} / {dailyLimit} new</strong></span>
                 </div>
                 <div className="h-3 w-px bg-[#636E72]/15" />
                 <div className="flex items-center gap-2 text-xs text-[#636E72]">
-                  <Calendar size={12} className="shrink-0" />
-                  <span>Week: <strong className="text-[#2D3436]">8h 15m</strong></span>
+                  <RotateCcw size={12} className="shrink-0" />
+                  <span>Due: <strong className="text-[#2D3436]">{dueReview} review</strong></span>
                 </div>
               </div>
             </div>
@@ -345,44 +503,7 @@ export function DashboardPage(): JSX.Element {
           {/* Consistency — flex-1 自动填充 */}
           <div className="flex-1 animate-fade-in" style={{ animationDelay: '0.1s' }}>
             <GlassCard className="h-full p-5 transition-all duration-300 hover:scale-[1.003] sm:p-6" hover>
-              <div className="mb-3 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Flame className="text-[#E17055]" size={20} />
-                  <h3 className="font-medium text-[#2D3436]">Consistency</h3>
-                </div>
-                <span className="text-xs text-[#636E72]">12 Days</span>
-              </div>
-              <div className="mb-1 flex gap-0.5 pl-10 sm:pl-12">
-                {MONTHS.map((m, i) => (
-                  <span key={i} className="flex-1 text-center text-[10px] text-[#636E72]">{m}</span>
-                ))}
-              </div>
-              <div className="flex flex-col gap-1">
-                {[0, 1, 2, 3].map((row) => (
-                  <div key={row} className="flex items-center gap-1">
-                    <span className="w-8 shrink-0 text-[10px] text-[#636E72] sm:w-10">{DAYS[row]}</span>
-                    <div className="grid flex-1 grid-cols-12 gap-0.5">
-                      {Array.from({ length: 12 }).map((_, col) => {
-                        const idx = row * 12 + col
-                        const level = HEATMAP_DATA[idx] ?? 0
-                        return (
-                          <div
-                            key={col}
-                            className="aspect-square rounded-full transition-transform hover:scale-110"
-                            style={{
-                              backgroundColor: level > 0
-                                ? `rgba(225, 112, 85, ${0.3 + level * 0.7})`
-                                : 'rgba(203, 213, 225, 0.35)',
-                              boxShadow: level > 0.5 ? '0 0 6px rgba(225, 112, 85, 0.5)' : 'none',
-                            }}
-                          />
-                        )
-                      })}
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <p className="mt-3 text-center text-xs text-[#636E72]">Last 12 weeks · 12 active days</p>
+              <ConsistencyHeatmap streakDays={streakDays} />
             </GlassCard>
           </div>
 
@@ -396,16 +517,20 @@ export function DashboardPage(): JSX.Element {
               </div>
               <ul className="space-y-2.5 flex-1">
                 <li className="flex items-center gap-2">
-                  <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-[#E17055]" aria-hidden />
-                  <span className="text-xs text-[#636E72] line-through opacity-75 sm:text-sm">Review 20 words</span>
+                  <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${dueReview === 0 ? 'bg-[#00B894]' : 'border-2 border-[#636E72]/40 bg-transparent'}`} aria-hidden />
+                  <span className={`text-xs sm:text-sm ${dueReview === 0 ? 'text-[#636E72] line-through opacity-75' : 'text-[#2D3436]'}`}>
+                    Review {vocabStats?.due_today ?? 0} words
+                  </span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${todayLearned >= dailyLimit ? 'bg-[#00B894]' : 'border-2 border-[#636E72]/40 bg-transparent'}`} aria-hidden />
+                  <span className={`text-xs sm:text-sm ${todayLearned >= dailyLimit ? 'text-[#636E72] line-through opacity-75' : 'text-[#2D3436]'}`}>
+                    Learn {dailyLimit} new words
+                  </span>
                 </li>
                 <li className="flex items-center gap-2">
                   <span className="h-2.5 w-2.5 shrink-0 rounded-full border-2 border-[#636E72]/40 bg-transparent" aria-hidden />
-                  <span className="text-xs text-[#2D3436] sm:text-sm">Writing task</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="h-2.5 w-2.5 shrink-0 rounded-full border-2 border-[#636E72]/40 bg-transparent" aria-hidden />
-                  <span className="text-xs text-[#636E72] sm:text-sm">Speaking</span>
+                  <span className="text-xs text-[#636E72] sm:text-sm">Writing practice</span>
                 </li>
               </ul>
             </GlassCard>
@@ -425,16 +550,18 @@ export function DashboardPage(): JSX.Element {
                       stroke="#E17055" strokeWidth="10" strokeLinecap="round"
                       strokeDasharray={251.2}
                       className="animate-progress"
-                      style={{ strokeDashoffset: 251.2 * 0.35 }}
+                      style={{ strokeDashoffset: 251.2 * (1 - masteryPct / 100) }}
                     />
                   </svg>
                   <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <span className="text-xl font-bold text-[#2D3436] sm:text-2xl">65%</span>
+                    <span className="text-xl font-bold text-[#2D3436] sm:text-2xl">{masteryPct}%</span>
                     <span className="text-[10px] text-[#636E72] sm:text-xs">Mastered</span>
                   </div>
                 </div>
               </div>
-              <p className="mt-2 text-center text-[10px] text-[#636E72] sm:text-sm">1,024 / 1,577</p>
+              <p className="mt-2 text-center text-[10px] text-[#636E72] sm:text-sm">
+                {masteredWords.toLocaleString()} / {totalWords.toLocaleString()}
+              </p>
             </GlassCard>
           </div>
         </div>

@@ -6,11 +6,11 @@ import type {
 } from '@renderer/types/settings'
 
 const getBaseUrl = async (): Promise<string> => {
-  const info = await window.electronAPI.getBackendInfo()
-  if (!info.baseUrl) {
-    throw new Error('Backend is not ready')
+  if (window.electronAPI?.getBackendInfo) {
+    const info = await window.electronAPI.getBackendInfo()
+    if (info?.baseUrl) return info.baseUrl
   }
-  return info.baseUrl
+  return 'http://localhost:8000'
 }
 
 export const fetchSettings = async (): Promise<SettingsResponse> => {
