@@ -31,27 +31,27 @@ export function SessionComplete({
         </div>
 
         <h2 className="text-xl font-semibold text-[#2D3436]">
-          {mode === 'learn' ? '新词学习完成！' : '复习完成！'}
+          {mode === 'learn' ? 'New-word session complete!' : 'Review session complete!'}
         </h2>
         <p className="mt-2 text-sm text-[#636E72]">
-          本轮共 {total} 个单词，用时 {elapsedStr}
+          This round: {total} words, time {elapsedStr}
         </p>
 
         {/* Stats */}
         <div className="mt-5 flex justify-center gap-6">
           <div className="text-center">
             <p className="text-2xl font-bold text-[#00B894]">{correctCount}</p>
-            <p className="text-xs text-[#636E72]">正确</p>
+            <p className="text-xs text-[#636E72]">Correct</p>
           </div>
           <div className="h-10 w-px bg-[#636E72]/10" />
           <div className="text-center">
             <p className="text-2xl font-bold text-[#E17055]">{wrongCount}</p>
-            <p className="text-xs text-[#636E72]">错误</p>
+            <p className="text-xs text-[#636E72]">Wrong</p>
           </div>
           <div className="h-10 w-px bg-[#636E72]/10" />
           <div className="text-center">
             <p className="text-2xl font-bold text-[#2D3436]">{accuracy}%</p>
-            <p className="text-xs text-[#636E72]">正确率</p>
+            <p className="text-xs text-[#636E72]">Accuracy</p>
           </div>
         </div>
 
@@ -63,7 +63,7 @@ export function SessionComplete({
               className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#E17055] py-3 text-sm font-medium text-white shadow-lg shadow-[#E17055]/20 transition-all duration-200 hover:shadow-xl hover:scale-[1.02] active:scale-[0.98]"
             >
               <RotateCcw size={16} />
-              继续复习
+              Continue Review
             </button>
           )}
           {onLearnNew && (
@@ -72,7 +72,7 @@ export function SessionComplete({
               className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#00B894] py-3 text-sm font-medium text-white shadow-lg shadow-[#00B894]/20 transition-all duration-200 hover:shadow-xl hover:scale-[1.02] active:scale-[0.98]"
             >
               <BookOpen size={16} />
-              学习新词
+              Learn New Words
             </button>
           )}
           <button
@@ -80,7 +80,7 @@ export function SessionComplete({
             className="flex w-full items-center justify-center gap-2 rounded-xl bg-white/50 py-3 text-sm font-medium text-[#2D3436] backdrop-blur transition-all duration-200 hover:bg-white/70 hover:scale-[1.02] active:scale-[0.98]"
           >
             <ArrowLeft size={16} />
-            返回
+            Back
           </button>
         </div>
       </GlassCard>

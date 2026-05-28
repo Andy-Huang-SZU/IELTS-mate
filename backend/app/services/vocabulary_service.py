@@ -7,8 +7,10 @@ from pathlib import Path
 from sqlalchemy import and_, case, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.vocabulary import Vocabulary
+from app.models.vocabulary import Vocabulary, VocabularyEvent
 from app.schemas.vocabulary import (
+    ActivityTrendData,
+    ActivityTrendPoint,
     HeatmapPoint,
     TodaySummaryData,
     VocabularyHeatmapData,
@@ -78,7 +80,7 @@ async def get_due_words(session: AsyncSession, limit: int) -> tuple[int, list[Vo
 
 
 async def submit_review(
-    session: AsyncSession, word_id: int, quality: int
+    session: AsyncSession, word_id: int, quality: int, mode: str = "review"
 ) -> VocabularyReviewResultData:
     word = await session.get(Vocabulary, word_id)
     if not word:
@@ -110,6 +112,12 @@ async def submit_review(
     if word.status in ("learning", "mastered") and not word.first_learned_at:
         word.first_learned_at = date.today()
 
+    # Write learning event for accurate heatmap/streak/trend stats
+    valid_modes = ("review", "learn_quiz", "spelling", "dictation")
+    event_mode = mode if mode in valid_modes else "review"
+    event = VocabularyEvent(word_id=word.id, mode=event_mode, quality=quality)
+    session.add(event)
+
     await session.commit()
     return VocabularyReviewResultData(
         word_id=word.id,
@@ -140,39 +148,42 @@ async def get_vocabulary_stats(session: AsyncSession) -> VocabularyStatsData:
         or 0
     )
 
+    # Unified due_today: already learned (repetition > 0) AND due
     today = date.today()
     due_today = int(
         (
             await session.execute(
                 select(func.count(Vocabulary.id)).where(
-                    or_(Vocabulary.next_review.is_(None), Vocabulary.next_review <= today)
+                    and_(
+                        Vocabulary.repetition > 0,
+                        or_(Vocabulary.next_review.is_(None), Vocabulary.next_review <= today),
+                    )
                 )
             )
         ).scalar_one()
         or 0
     )
 
-    # A lightweight streak proxy: consecutive days with any reviewed words.
+    # Event-driven streak: consecutive days with learning events
     streak_days = 0
     cursor = today
     while True:
         start_dt = datetime.combine(cursor, time.min)
         end_dt = datetime.combine(cursor, time.max)
-        reviewed_count = int(
+        event_count = int(
             (
                 await session.execute(
-                    select(func.count(Vocabulary.id)).where(
+                    select(func.count(VocabularyEvent.id)).where(
                         and_(
-                            Vocabulary.repetition > 0,
-                            Vocabulary.updated_at >= start_dt,
-                            Vocabulary.updated_at <= end_dt,
+                            VocabularyEvent.created_at >= start_dt,
+                            VocabularyEvent.created_at <= end_dt,
                         )
                     )
                 )
             ).scalar_one()
             or 0
         )
-        if reviewed_count == 0:
+        if event_count == 0:
             break
         streak_days += 1
         cursor = cursor - timedelta(days=1)
@@ -192,10 +203,12 @@ async def get_vocabulary_stats(session: AsyncSession) -> VocabularyStatsData:
 async def get_heatmap_data(session: AsyncSession, year: int) -> VocabularyHeatmapData:
     start = datetime(year, 1, 1)
     end = datetime(year + 1, 1, 1)
+
+    # Event-driven: count learning events per day
     rows = (
         await session.execute(
-            select(Vocabulary.updated_at).where(
-                and_(Vocabulary.repetition > 0, Vocabulary.updated_at >= start, Vocabulary.updated_at < end)
+            select(VocabularyEvent.created_at).where(
+                and_(VocabularyEvent.created_at >= start, VocabularyEvent.created_at < end)
             )
         )
     ).scalars().all()
@@ -217,12 +230,16 @@ async def get_learning_curve_data(session: AsyncSession, days: int) -> Vocabular
     learning: list[int] = []
 
     for d in dates:
-        day_end = datetime.combine(d, time.max)
+        # Count words that were first learned on or before this date and are now mastered
         mastered_count = int(
             (
                 await session.execute(
                     select(func.count(Vocabulary.id)).where(
-                        and_(Vocabulary.status == "mastered", Vocabulary.updated_at <= day_end)
+                        and_(
+                            Vocabulary.status == "mastered",
+                            Vocabulary.first_learned_at.isnot(None),
+                            Vocabulary.first_learned_at <= d,
+                        )
                     )
                 )
             ).scalar_one()
@@ -232,7 +249,11 @@ async def get_learning_curve_data(session: AsyncSession, days: int) -> Vocabular
             (
                 await session.execute(
                     select(func.count(Vocabulary.id)).where(
-                        and_(Vocabulary.status == "learning", Vocabulary.updated_at <= day_end)
+                        and_(
+                            Vocabulary.status == "learning",
+                            Vocabulary.first_learned_at.isnot(None),
+                            Vocabulary.first_learned_at <= d,
+                        )
                     )
                 )
             ).scalar_one()
@@ -242,6 +263,47 @@ async def get_learning_curve_data(session: AsyncSession, days: int) -> Vocabular
         learning.append(learning_count)
 
     return VocabularyLearningCurveData(dates=dates, mastered=mastered, learning=learning)
+
+
+async def get_activity_trend(session: AsyncSession, days: int = 14) -> ActivityTrendData:
+    """Get daily learning activity trend from event table, broken down by mode."""
+    days = max(1, min(days, 90))
+    today = date.today()
+    start_date = today - timedelta(days=days - 1)
+    start_dt = datetime.combine(start_date, time.min)
+
+    rows = (
+        await session.execute(
+            select(VocabularyEvent.created_at, VocabularyEvent.mode).where(
+                VocabularyEvent.created_at >= start_dt
+            )
+        )
+    ).all()
+
+    # Aggregate by day and mode
+    daily: dict[date, dict[str, int]] = {}
+    for d in [start_date + timedelta(days=i) for i in range(days)]:
+        daily[d] = {"review": 0, "learn_quiz": 0, "spelling": 0, "dictation": 0}
+
+    for created_at, mode in rows:
+        d = created_at.date()
+        if d in daily:
+            mode_key = mode if mode in daily[d] else "review"
+            daily[d][mode_key] += 1
+
+    points = [
+        ActivityTrendPoint(
+            date=d,
+            total=sum(counts.values()),
+            review=counts.get("review", 0),
+            learn_quiz=counts.get("learn_quiz", 0),
+            spelling=counts.get("spelling", 0),
+            dictation=counts.get("dictation", 0),
+        )
+        for d, counts in sorted(daily.items())
+    ]
+
+    return ActivityTrendData(days=days, data=points)
 
 
 async def search_vocabulary(

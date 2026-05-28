@@ -1,0 +1,67 @@
+appId: com.ieltsmate.app
+productName: IELTS-mate
+copyright: Copyright © 2026 IELTS-mate
+
+directories:
+  buildResources: build
+  output: dist
+
+files:
+  - out/**/*
+  - "!out/**/*.map"
+
+extraResources:
+  # Python backend source code + launcher
+  - from: backend/app/
+    to: backend/app
+    filter:
+      - "**/*.py"
+  - from: backend/launch-backend.sh
+    to: backend/launch-backend.sh
+  - from: backend/requirements.txt
+    to: backend/requirements.txt
+  - from: backend/data/ielts_vocabulary.json
+    to: backend/data/ielts_vocabulary.json
+  - from: backend/data/writing_topics.json
+    to: backend/data/writing_topics.json
+
+mac:
+  category: public.app-category.education
+  target:
+    - target: dir
+    - target: zip
+  artifactName: "${productName}-${version}-mac.${ext}"
+  hardenedRuntime: false
+  gatekeeperAssess: false
+
+dmg:
+  contents:
+    - x: 130
+      y: 220
+    - x: 410
+      y: 220
+      type: link
+      path: /Applications
+
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  icon: build/icon.ico
+  artifactName: "${productName}-${version}-win-${arch}.${ext}"
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  deleteAppDataOnUninstall: false
+
+linux:
+  target:
+    - target: AppImage
+      arch:
+        - x64
+  category: Education
+  icon: build/icon.png
+  artifactName: "${productName}-${version}-linux-${arch}.${ext}"

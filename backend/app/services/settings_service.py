@@ -24,6 +24,7 @@ def mask_payload(payload: SettingsPayload) -> SettingsPayload:
     masked.llm_api_key = mask_key(masked.llm_api_key)
     masked.stt_api_key = mask_key(masked.stt_api_key)
     masked.tts_api_key = mask_key(masked.tts_api_key)
+    masked.topicgen_api_key = mask_key(masked.topicgen_api_key)
     return masked
 
 

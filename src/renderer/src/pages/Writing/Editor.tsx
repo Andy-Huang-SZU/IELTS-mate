@@ -1,192 +1,56 @@
-import { useState, useEffect, useMemo, useCallback } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import {
-  BarChart3, Feather, FileText, Send, Loader2, ArrowLeft,
-  TrendingUp, PieChart,
+  ArrowLeft,
+  BarChart3,
+  ChevronDown,
+  ChevronUp,
+  Feather,
+  FileText,
+  Hash,
+  Loader2,
+  RefreshCw,
+  Send,
+  Sparkles,
+  TrendingUp,
 } from 'lucide-react'
 import { GlassCard, PageContainer } from '../../components/flux'
 import {
-  generateTopic,
   evaluateEssay,
+  fetchTopicBank,
+  generateTopic,
+  randomTopic,
+  topicEstimate,
   type TopicData,
-  type ChartData,
 } from '../../services/writing'
+import { ChartRenderer } from './components/ChartRenderer'
 
-/* ──── Simple SVG chart for Task 1 ──── */
-function MiniBarChart({ chart }: { chart: ChartData }) {
-  const allVals = chart.series.flatMap(s => s.data)
-  const max = Math.max(...allVals, 1)
-  const colors = ['#5EEAD4', '#74B9FF', '#FDCB6E', '#E17055', '#A78BFA', '#00B894']
-  const barW = Math.max(12, Math.min(32, 200 / (chart.categories.length * chart.series.length)))
-  const groupW = barW * chart.series.length + 8
-  const svgW = Math.max(280, groupW * chart.categories.length + 60)
-
-  return (
-    <div className="mt-4 overflow-x-auto">
-      {chart.title && (
-        <p className="text-[10px] text-[#636E72] mb-2 text-center">{chart.title}</p>
-      )}
-      <svg viewBox={`0 0 ${svgW} 160`} className="w-full max-h-[140px]">
-        {chart.categories.map((cat, ci) => (
-          <g key={ci}>
-            {chart.series.map((s, si) => {
-              const h = (s.data[ci] / max) * 110
-              const x = 40 + ci * groupW + si * barW
-              return (
-                <rect
-                  key={si}
-                  x={x}
-                  y={130 - h}
-                  width={barW - 2}
-                  height={h}
-                  rx={3}
-                  fill={colors[si % colors.length]}
-                  opacity={0.85}
-                />
-              )
-            })}
-            <text
-              x={40 + ci * groupW + (groupW - 8) / 2}
-              y={148}
-              textAnchor="middle"
-              className="fill-[#B2BEC3]"
-              fontSize={8}
-            >
-              {cat}
-            </text>
-          </g>
-        ))}
-      </svg>
-      {chart.series.length > 1 && (
-        <div className="flex flex-wrap gap-3 mt-2 justify-center">
-          {chart.series.map((s, i) => (
-            <div key={i} className="flex items-center gap-1.5">
-              <div className="w-2.5 h-2.5 rounded" style={{ backgroundColor: colors[i % colors.length] }} />
-              <span className="text-[9px] text-[#636E72]">{s.name}</span>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
-
-function MiniLineChart({ chart }: { chart: ChartData }) {
-  const allVals = chart.series.flatMap(s => s.data)
-  const max = Math.max(...allVals, 1)
-  const colors = ['#00B894', '#74B9FF', '#E17055', '#A78BFA', '#FDCB6E']
-  const w = 280
-  const h = 120
-  const padX = 40
-  const padY = 15
-  const plotW = w - padX - 10
-  const plotH = h - padY * 2
-  const n = chart.categories.length
-
-  return (
-    <div className="mt-4">
-      {chart.title && (
-        <p className="text-[10px] text-[#636E72] mb-2 text-center">{chart.title}</p>
-      )}
-      <svg viewBox={`0 0 ${w} ${h + 20}`} className="w-full max-h-[130px]">
-        {chart.series.map((s, si) => {
-          const pts = s.data
-            .map((v, i) => {
-              const x = padX + (i / Math.max(n - 1, 1)) * plotW
-              const y = padY + plotH - (v / max) * plotH
-              return `${x},${y}`
-            })
-            .join(' ')
-          return (
-            <polyline
-              key={si}
-              points={pts}
-              fill="none"
-              stroke={colors[si % colors.length]}
-              strokeWidth={2}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          )
-        })}
-        {chart.categories.map((cat, i) => (
-          <text
-            key={i}
-            x={padX + (i / Math.max(n - 1, 1)) * plotW}
-            y={h + 10}
-            textAnchor="middle"
-            className="fill-[#B2BEC3]"
-            fontSize={8}
-          >
-            {cat}
-          </text>
-        ))}
-      </svg>
-    </div>
-  )
-}
-
-function MiniPieChart({ chart }: { chart: ChartData }) {
-  const data = chart.series[0]?.data ?? []
-  const labels = chart.categories
-  const total = data.reduce((a, b) => a + b, 0) || 1
-  const colors = ['#5EEAD4', '#74B9FF', '#FDCB6E', '#E17055', '#A78BFA', '#00B894']
-  let cumAngle = -Math.PI / 2
-
-  return (
-    <div className="mt-4 flex flex-col items-center">
-      {chart.title && (
-        <p className="text-[10px] text-[#636E72] mb-2 text-center">{chart.title}</p>
-      )}
-      <svg viewBox="0 0 120 120" className="w-24 h-24">
-        {data.map((v, i) => {
-          const angle = (v / total) * Math.PI * 2
-          const startX = 60 + 50 * Math.cos(cumAngle)
-          const startY = 60 + 50 * Math.sin(cumAngle)
-          cumAngle += angle
-          const endX = 60 + 50 * Math.cos(cumAngle)
-          const endY = 60 + 50 * Math.sin(cumAngle)
-          const large = angle > Math.PI ? 1 : 0
-          return (
-            <path
-              key={i}
-              d={`M60,60 L${startX},${startY} A50,50 0 ${large},1 ${endX},${endY} Z`}
-              fill={colors[i % colors.length]}
-              opacity={0.85}
-            />
-          )
-        })}
-      </svg>
-      <div className="flex flex-wrap gap-2 mt-2 justify-center">
-        {labels.map((l, i) => (
-          <div key={i} className="flex items-center gap-1">
-            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: colors[i % colors.length] }} />
-            <span className="text-[9px] text-[#636E72]">{l}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function ChartRenderer({ chartType, chartData }: { chartType?: string; chartData?: ChartData }) {
-  if (!chartData) return null
-  if (chartType === 'line') return <MiniLineChart chart={chartData} />
-  if (chartType === 'pie') return <MiniPieChart chart={chartData} />
-  return <MiniBarChart chart={chartData} />
-}
-
-/* ──── Main Editor Component ──── */
 export function WritingEditor(): JSX.Element {
   const navigate = useNavigate()
+  const location = useLocation()
   const [searchParams] = useSearchParams()
   const taskType = searchParams.get('type') === 'task1' ? 'part_a' : 'part_b'
+  const chartTypeParam = searchParams.get('chartType')
+  const questionTypeParam = searchParams.get('questionType')
+  const sourceParam = searchParams.get('source')
+  const topicIdParam = searchParams.get('topicId')
 
   const [topic, setTopic] = useState<TopicData | null>(null)
   const [loadingTopic, setLoadingTopic] = useState(true)
+  const [swapping, setSwapping] = useState(false)
+  const [aiGenerating, setAiGenerating] = useState(false)
   const [essay, setEssay] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
+  const [tokenInfo, setTokenInfo] = useState<{ total_tokens: number; estimated_cost?: number } | null>(null)
+  const [chartCollapsed, setChartCollapsed] = useState(false)
+
+  const topicFromState = useMemo(() => {
+    const state = location.state as { topic?: TopicData } | null
+    const candidate = state?.topic
+    if (!candidate || candidate.task_type !== taskType) return null
+    return candidate
+  }, [location.state, taskType])
 
   const wordCount = useMemo(() => {
     const trimmed = essay.trim()
@@ -194,15 +58,119 @@ export function WritingEditor(): JSX.Element {
   }, [essay])
 
   const recommended = taskType === 'part_a' ? '150+' : '250+'
+  const topicSubtype = topic?.chart_type || topic?.question_type || 'unknown'
+  const topicDifficulty = topic?.difficulty || 'medium'
 
   useEffect(() => {
-    setLoadingTopic(true)
+    let cancelled = false
+
+    const loadTopic = async () => {
+      setLoadingTopic(true)
+      setError('')
+      setEssay('')
+
+      try {
+        if (topicFromState) {
+          if (!cancelled) setTopic(topicFromState)
+          return
+        }
+
+        if (topicIdParam) {
+          const bankResponse = await fetchTopicBank({
+            task_type: taskType,
+            chart_type: chartTypeParam || undefined,
+            question_type: questionTypeParam || undefined,
+          })
+          const matchedTopic = bankResponse.data.topics.find(item => item.id === topicIdParam)
+          if (matchedTopic) {
+            if (!cancelled) setTopic(matchedTopic)
+            return
+          }
+        }
+
+        if (sourceParam === 'ai') {
+          const generated = await generateTopic({
+            task_type: taskType,
+            chart_type: chartTypeParam || undefined,
+            question_type: questionTypeParam || undefined,
+          })
+          if (!cancelled) setTopic(generated.data)
+          return
+        }
+
+        try {
+          const random = await randomTopic({
+            task_type: taskType,
+            chart_type: chartTypeParam || undefined,
+            question_type: questionTypeParam || undefined,
+          })
+          if (!cancelled) setTopic(random.data)
+        } catch {
+          const generated = await generateTopic({
+            task_type: taskType,
+            chart_type: chartTypeParam || undefined,
+            question_type: questionTypeParam || undefined,
+          })
+          if (!cancelled) setTopic(generated.data)
+        }
+      } catch (loadError: unknown) {
+        const message = loadError instanceof Error ? loadError.message : 'Failed to load topic'
+        if (!cancelled) setError(message)
+      } finally {
+        if (!cancelled) setLoadingTopic(false)
+      }
+    }
+
+    loadTopic()
+
+    return () => {
+      cancelled = true
+    }
+  }, [taskType, sourceParam, chartTypeParam, questionTypeParam, topicIdParam, topicFromState])
+
+  useEffect(() => {
+    topicEstimate({
+      task_type: taskType,
+      chart_type: chartTypeParam || undefined,
+      question_type: questionTypeParam || undefined,
+    })
+      .then(r => setTokenInfo(r.data))
+      .catch(() => {})
+  }, [taskType, chartTypeParam, questionTypeParam])
+
+  const handleSwapTopic = useCallback(async () => {
+    setSwapping(true)
     setError('')
-    generateTopic(taskType)
-      .then(r => setTopic(r.data))
-      .catch(e => setError(e.message || 'Failed to generate topic'))
-      .finally(() => setLoadingTopic(false))
-  }, [taskType])
+    setChartCollapsed(false)
+    randomTopic({
+      task_type: taskType,
+      chart_type: chartTypeParam || undefined,
+      question_type: questionTypeParam || undefined,
+    })
+      .then(r => {
+        setTopic(r.data)
+        setEssay('')
+      })
+      .catch(e => setError(e.message || 'No more topics available'))
+      .finally(() => setSwapping(false))
+  }, [taskType, chartTypeParam, questionTypeParam])
+
+  const handleAiGenerate = useCallback(async () => {
+    setAiGenerating(true)
+    setError('')
+    setChartCollapsed(false)
+    generateTopic({
+      task_type: taskType,
+      chart_type: chartTypeParam || undefined,
+      question_type: questionTypeParam || undefined,
+    })
+      .then(r => {
+        setTopic(r.data)
+        setEssay('')
+      })
+      .catch(e => setError(e.message || 'AI generation failed'))
+      .finally(() => setAiGenerating(false))
+  }, [taskType, chartTypeParam, questionTypeParam])
 
   const handleSubmit = useCallback(async () => {
     if (!topic || !essay.trim()) return
@@ -210,13 +178,12 @@ export function WritingEditor(): JSX.Element {
     setError('')
     evaluateEssay({
       task_type: taskType,
+      topic_id: topic.id ?? null,
       topic: topic.prompt,
-      topic_data: topic.chart_data ? { chart_type: topic.chart_type, chart_data: topic.chart_data } : null,
+      topic_data: topic as unknown as Record<string, unknown>,
       user_essay: essay,
     })
-      .then(r => {
-        navigate(`/writing/report/${r.data.session_id}`)
-      })
+      .then(r => navigate(`/writing/report/${r.data.session_id}`))
       .catch(e => {
         setError(e.message || 'Evaluation failed')
         setSubmitting(false)
@@ -224,28 +191,150 @@ export function WritingEditor(): JSX.Element {
   }, [topic, essay, taskType, navigate])
 
   const isTask1 = taskType === 'part_a'
+  const hasChart = isTask1 && topic?.chart_data
   const tagColor = isTask1 ? 'bg-[#5EEAD4]/20 text-[#00B894]' : 'bg-[#E17055]/15 text-[#E17055]'
   const tagIcon = isTask1 ? <BarChart3 size={13} /> : <Feather size={13} />
   const tagLabel = isTask1 ? 'Task 1' : 'Task 2'
 
+  const topicContent = (
+    <>
+      {loadingTopic ? (
+        <div className="flex flex-col items-center gap-3 py-12">
+          <Loader2 size={24} className="animate-spin text-[#B2BEC3]" />
+          <p className="text-xs text-[#B2BEC3]">Loading topic...</p>
+        </div>
+      ) : topic ? (
+        <>
+          <div className="mb-3 flex flex-wrap items-center gap-2 text-[11px]">
+            <span className="inline-flex items-center gap-1 rounded-full bg-[#2D3436]/5 px-2.5 py-1 font-semibold text-[#2D3436]">
+              <Hash size={11} />
+              {topic.id || 'Pending ID'}
+            </span>
+            <span className="rounded-full bg-white/60 px-2.5 py-1 uppercase tracking-wide text-[#636E72]">
+              {topicSubtype.replaceAll('_', ' ')}
+            </span>
+            <span className="rounded-full bg-white/60 px-2.5 py-1 uppercase tracking-wide text-[#636E72]">
+              {topicDifficulty}
+            </span>
+            {topic.legacy_id && (
+              <span className="rounded-full bg-[#A78BFA]/10 px-2.5 py-1 text-[#A78BFA]">
+                legacy {topic.legacy_id}
+              </span>
+            )}
+          </div>
+
+          <h3 className="mb-3 flex items-center gap-2 text-sm font-medium text-[#2D3436]">
+            <FileText size={15} className="text-[#636E72]" />
+            Topic
+          </h3>
+          <p className="whitespace-pre-wrap text-[13px] leading-relaxed text-[#2D3436]/90">
+            {topic.prompt}
+          </p>
+
+          {topic.topic_tags && topic.topic_tags.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {topic.topic_tags.map(tag => (
+                <span key={tag} className="rounded-full bg-[#F7F6F2] px-2.5 py-1 text-[10px] text-[#636E72]">
+                  {tag}
+                </span>
+              ))}
+            </div>
+          )}
+
+          <div className="mt-4 flex items-center gap-2">
+            <button
+              onClick={handleSwapTopic}
+              disabled={swapping || aiGenerating}
+              className="flex cursor-pointer items-center gap-1.5 rounded-lg border border-[#DFE6E9] px-3 py-1.5 text-[11px] font-medium text-[#636E72] transition-all hover:bg-[#F7F6F2] hover:text-[#2D3436] disabled:opacity-40"
+            >
+              <RefreshCw size={12} className={swapping ? 'animate-spin' : ''} />
+              Swap Topic
+            </button>
+            <button
+              onClick={handleAiGenerate}
+              disabled={swapping || aiGenerating}
+              className="flex cursor-pointer items-center gap-1.5 rounded-lg bg-[#A78BFA]/10 px-3 py-1.5 text-[11px] font-medium text-[#A78BFA] transition-all hover:bg-[#A78BFA]/20 disabled:opacity-40"
+              title={tokenInfo ? `~${tokenInfo.total_tokens.toLocaleString()} tokens${tokenInfo.estimated_cost ? ` ($${tokenInfo.estimated_cost.toFixed(4)})` : ''}` : 'Generate with AI'}
+            >
+              <Sparkles size={12} className={aiGenerating ? 'animate-pulse' : ''} />
+              AI Generate
+            </button>
+          </div>
+
+          <div className="mt-4 flex items-center gap-2 rounded-lg bg-[#F7F6F2] px-3 py-2">
+            <TrendingUp size={13} className="text-[#636E72]" />
+            <span className="text-[10px] text-[#636E72]">
+              Recommended: {recommended} words
+            </span>
+          </div>
+        </>
+      ) : (
+        <p className="py-8 text-center text-xs text-[#B2BEC3]">
+          Failed to load topic. Please go back and try again.
+        </p>
+      )}
+    </>
+  )
+
+  const writingArea = (
+    <GlassCard className="flex flex-1 flex-col overflow-hidden p-0" hover>
+      <textarea
+        value={essay}
+        onChange={e => setEssay(e.target.value)}
+        placeholder="Start writing your essay here..."
+        disabled={submitting || loadingTopic}
+        className="flex-1 w-full resize-none border-0 bg-transparent px-7 py-6 text-[14px] leading-[32px] text-[#2D3436] placeholder:text-[#B2BEC3]/60 focus:outline-none disabled:opacity-50"
+        style={{
+          fontFamily: "'Inter', sans-serif",
+          backgroundImage:
+            'repeating-linear-gradient(transparent, transparent 31px, rgba(180,190,195,0.12) 31px, rgba(180,190,195,0.12) 32px)',
+          backgroundSize: '100% 32px',
+          backgroundPosition: '0 5px',
+        }}
+      />
+
+      <div className="shrink-0 border-t border-[#636E72]/8 bg-white/30 px-5 py-3 backdrop-blur-sm">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-4">
+            <span className="text-xs text-[#636E72]">
+              <span className="tabular-nums font-semibold text-[#2D3436]">{wordCount}</span> words
+            </span>
+            {wordCount > 0 && (
+              <span className={`text-[10px] ${wordCount >= parseInt(recommended) ? 'text-[#00B894]' : 'text-[#FDCB6E]'}`}>
+                {wordCount >= parseInt(recommended) ? '✓ Good length' : `Target: ${recommended}`}
+              </span>
+            )}
+          </div>
+
+          <button
+            onClick={handleSubmit}
+            disabled={submitting || !essay.trim() || !topic}
+            className="flex cursor-pointer items-center gap-2 rounded-xl bg-gradient-to-r from-[#00B894] to-[#5EEAD4] px-5 py-2 text-sm font-medium text-white shadow-md transition-all hover:scale-105 hover:shadow-lg active:scale-95 disabled:opacity-40 disabled:hover:scale-100"
+          >
+            <Send size={14} />
+            Submit for Review
+          </button>
+        </div>
+      </div>
+    </GlassCard>
+  )
+
   return (
     <PageContainer>
-      {/* Back button */}
       <button
         onClick={() => navigate('/writing')}
-        className="mb-4 flex items-center gap-1.5 text-sm text-[#636E72] hover:text-[#2D3436] transition-colors animate-fade-in"
+        className="mb-4 flex cursor-pointer items-center gap-1.5 text-sm text-[#636E72] transition-colors hover:text-[#2D3436] animate-fade-in"
       >
         <ArrowLeft size={16} />
         <span>Back</span>
       </button>
 
-      {/* Loading overlay for evaluation */}
       {submitting && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-sm">
           <GlassCard className="flex flex-col items-center gap-4 p-8">
-            <Loader2 size={36} className="text-[#E17055] animate-spin" />
-            <p className="text-sm font-medium text-[#2D3436]">AI 正在批改...</p>
-            <p className="text-xs text-[#B2BEC3]">通常需要 30-60 秒，请耐心等待</p>
+            <Loader2 size={36} className="animate-spin text-[#E17055]" />
+            <p className="text-sm font-medium text-[#2D3436]">AI is grading...</p>
+            <p className="text-xs text-[#B2BEC3]">Usually takes 30-60 seconds</p>
           </GlassCard>
         </div>
       )}
@@ -256,99 +345,70 @@ export function WritingEditor(): JSX.Element {
         </div>
       )}
 
-      {/* Main layout: left topic + right editor */}
-      <div className="flex flex-col lg:flex-row gap-5 animate-fade-in" style={{ animationDelay: '0.05s' }}>
-
-        {/* Left: Topic Panel */}
-        <div className="w-full lg:w-[38%] shrink-0">
-          <GlassCard className="p-6 sticky top-6" hover>
-            {/* Tag */}
-            <div className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium ${tagColor} mb-4`}>
+      {hasChart ? (
+        <div className="flex flex-col gap-5 animate-fade-in" style={{ animationDelay: '0.05s' }}>
+          <GlassCard className="p-6" hover>
+            <div className={`mb-4 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium ${tagColor}`}>
               {tagIcon}
               {tagLabel}
             </div>
 
-            {loadingTopic ? (
-              <div className="flex flex-col items-center gap-3 py-12">
-                <Loader2 size={24} className="text-[#B2BEC3] animate-spin" />
-                <p className="text-xs text-[#B2BEC3]">Generating topic...</p>
-              </div>
-            ) : topic ? (
-              <>
-                <h3 className="text-sm font-medium text-[#2D3436] mb-3 flex items-center gap-2">
-                  <FileText size={15} className="text-[#636E72]" />
-                  Topic
-                </h3>
-                <p className="text-[13px] leading-relaxed text-[#2D3436]/90 whitespace-pre-wrap">
-                  {topic.prompt}
-                </p>
+            {topicContent}
 
-                {isTask1 && topic.chart_data && (
-                  <ChartRenderer chartType={topic.chart_type} chartData={topic.chart_data} />
-                )}
-
-                {/* Word count guide */}
-                <div className="mt-5 flex items-center gap-2 rounded-lg bg-[#F7F6F2] px-3 py-2">
-                  <TrendingUp size={13} className="text-[#636E72]" />
-                  <span className="text-[10px] text-[#636E72]">
-                    Recommended: {recommended} words
-                  </span>
+            {topic?.chart_data && (
+              <div className="mt-5">
+                <div className="mb-2 flex items-center justify-between">
+                  <div className="h-px flex-1 bg-[#DFE6E9]/60" />
+                  <button
+                    onClick={() => setChartCollapsed(!chartCollapsed)}
+                    className="flex cursor-pointer items-center gap-1.5 px-3 py-1 text-[10px] font-medium text-[#636E72] transition-colors hover:text-[#2D3436]"
+                  >
+                    {chartCollapsed ? (
+                      <>
+                        <ChevronDown size={12} />
+                        Show Chart
+                      </>
+                    ) : (
+                      <>
+                        <ChevronUp size={12} />
+                        Hide Chart
+                      </>
+                    )}
+                  </button>
+                  <div className="h-px flex-1 bg-[#DFE6E9]/60" />
                 </div>
-              </>
-            ) : (
-              <p className="py-8 text-center text-xs text-[#B2BEC3]">
-                Failed to load topic. Please go back and try again.
-              </p>
+
+                {!chartCollapsed && (
+                  <div className="transition-all duration-300">
+                    <ChartRenderer chartType={topic.chart_type} chartData={topic.chart_data as any} />
+                  </div>
+                )}
+              </div>
             )}
           </GlassCard>
+
+          <div className="flex min-h-[500px] flex-col">
+            {writingArea}
+          </div>
         </div>
-
-        {/* Right: Writing Area */}
-        <div className="flex-1 flex flex-col min-h-[500px]">
-          <GlassCard className="flex-1 flex flex-col p-0 overflow-hidden" hover>
-            {/* Paper-texture textarea */}
-            <textarea
-              value={essay}
-              onChange={e => setEssay(e.target.value)}
-              placeholder="Start writing your essay here..."
-              disabled={submitting || loadingTopic}
-              className="flex-1 w-full resize-none border-0 bg-transparent px-7 py-6 text-[14px] leading-[32px] text-[#2D3436] placeholder:text-[#B2BEC3]/60 focus:outline-none disabled:opacity-50"
-              style={{
-                fontFamily: "'Inter', sans-serif",
-                backgroundImage:
-                  'repeating-linear-gradient(transparent, transparent 31px, rgba(180,190,195,0.12) 31px, rgba(180,190,195,0.12) 32px)',
-                backgroundSize: '100% 32px',
-                backgroundPosition: '0 5px',
-              }}
-            />
-
-            {/* Bottom toolbar */}
-            <div className="flex items-center justify-between border-t border-[#636E72]/8 px-5 py-3 bg-white/30 backdrop-blur-sm shrink-0">
-              <div className="flex items-center gap-4">
-                <span className="text-xs text-[#636E72]">
-                  <span className="font-semibold text-[#2D3436] tabular-nums">{wordCount}</span> words
-                </span>
-                {wordCount > 0 && (
-                  <span className={`text-[10px] ${
-                    wordCount >= parseInt(recommended) ? 'text-[#00B894]' : 'text-[#FDCB6E]'
-                  }`}>
-                    {wordCount >= parseInt(recommended) ? '✓ Good length' : `Target: ${recommended}`}
-                  </span>
-                )}
+      ) : (
+        <div className="flex flex-col gap-5 animate-fade-in lg:flex-row" style={{ animationDelay: '0.05s' }}>
+          <div className="w-full shrink-0 lg:w-[38%]">
+            <GlassCard className="sticky top-6 p-6" hover>
+              <div className={`mb-4 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium ${tagColor}`}>
+                {tagIcon}
+                {tagLabel}
               </div>
 
-              <button
-                onClick={handleSubmit}
-                disabled={submitting || !essay.trim() || !topic}
-                className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#00B894] to-[#5EEAD4] px-5 py-2 text-sm font-medium text-white shadow-md transition-all hover:scale-105 hover:shadow-lg active:scale-95 disabled:opacity-40 disabled:hover:scale-100"
-              >
-                <Send size={14} />
-                Submit for Review
-              </button>
-            </div>
-          </GlassCard>
+              {topicContent}
+            </GlassCard>
+          </div>
+
+          <div className="flex min-h-[500px] flex-1 flex-col">
+            {writingArea}
+          </div>
         </div>
-      </div>
+      )}
     </PageContainer>
   )
 }

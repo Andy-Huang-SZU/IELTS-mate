@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import date, datetime
 
-from sqlalchemy import Boolean, Date, DateTime, Float, Integer, String, Text
+from sqlalchemy import Boolean, Date, DateTime, Float, Index, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
@@ -42,4 +42,27 @@ class Vocabulary(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
+    )
+
+
+class VocabularyEvent(Base):
+    """Records actual learning events for accurate heatmap/streak/trend statistics.
+
+    Only real learning activities (review, quiz, spelling, dictation) create events.
+    Bookmark/note changes do NOT generate events, keeping stats clean.
+    """
+
+    __tablename__ = "vocabulary_events"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    word_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    mode: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="review"
+    )  # review | learn_quiz | spelling | dictation
+    quality: Mapped[int] = mapped_column(Integer, nullable=False, default=3)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+
+    __table_args__ = (
+        Index("ix_vocab_events_created_at", "created_at"),
+        Index("ix_vocab_events_word_mode", "word_id", "mode"),
     )

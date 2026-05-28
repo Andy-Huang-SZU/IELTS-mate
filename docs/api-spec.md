@@ -1,6 +1,6 @@
 # IELTS-mate API 规格文档
 
-> 最后更新：2026-02-20
+> 最后更新：2026-03-24
 >
 > 基础路径：`http://127.0.0.1:{port}/api`
 
@@ -77,7 +77,14 @@ Electron 主进程用于确认 Python 服务已就绪。
   "tts_api_key": "sk-****",
   "tts_base_url": "https://api.openai.com/v1",
   "tts_model": "tts-1",
-  "tts_voice": "alloy"
+  "tts_voice": "alloy",
+  "topicgen_use_same_llm": true,
+  "topicgen_provider": "",
+  "topicgen_api_key": "sk-****",
+  "topicgen_base_url": "",
+  "topicgen_model": "deepseek-chat",
+  "token_price_input": 0.0,
+  "token_price_output": 0.0
 }
 ```
 
@@ -162,7 +169,8 @@ Electron 主进程用于确认 Python 服务已就绪。
 **请求体：**
 ```json
 {
-  "quality": 3    // 0=Again, 2=Hard, 3=Good, 5=Easy
+  "quality": 3,    // 0=Again, 2=Hard, 3=Good, 5=Easy
+  "mode": "review" // 可选，默认 "review"；可选值: "review" / "learn_quiz" / "spelling" / "dictation"
 }
 ```
 
@@ -345,14 +353,17 @@ Electron 主进程用于确认 Python 服务已就绪。
 
 ## 5. 写作模块 (Writing)
 
-### 5.1 生成写作题目
+### 5.1 AI 生成写作题目
 
 `POST /api/writing/generate-topic`
 
 **请求体：**
 ```json
 {
-  "task_type": "part_a" | "part_b"
+  "task_type": "part_a" | "part_b",
+  "chart_type": "bar" | "line" | "pie" | "table" | "mixed" | "map" | "process",  // Task 1 专用，7 种类型
+  "question_type": "opinion" | "discussion" | "problem_solution" | "two_part" | "advantage_disadvantage",  // Task 2 专用，可选
+  "theme": "education"  // 可选，指定话题主题，null 则随机
 }
 ```
 
@@ -360,40 +371,270 @@ Electron 主进程用于确认 Python 服务已就绪。
 ```json
 {
   "task_type": "part_a",
+  "id": "T1-BAR-0001",
   "prompt": "The chart below shows the percentage of households...",
-  "chart_type": "bar" | "line" | "pie",
+  "chart_type": "bar",
   "chart_data": {
     "title": "Household Energy Consumption by Source (2000-2020)",
     "categories": ["2000", "2005", "2010", "2015", "2020"],
     "series": [
       { "name": "Natural Gas", "data": [42, 38, 35, 30, 25] },
-      { "name": "Electricity", "data": [30, 35, 40, 45, 50] },
-      { "name": "Solar", "data": [2, 5, 10, 15, 20] }
+      { "name": "Electricity", "data": [30, 35, 40, 45, 50] }
     ],
     "unit": "%"
+  },
+  "question_type": null,
+  "topic_tags": ["environment", "energy"],
+  "difficulty": "medium",
+  "source": "generated"
+}
+```
+
+**响应顶层还包含 usage 字段：**
+```json
+{
+  "success": true,
+  "data": { ... },
+  "usage": {
+    "prompt_tokens": 420,
+    "completion_tokens": 680,
+    "total_tokens": 1100
+  },
+  "message": "ok"
+}
+```
+
+**新增图表类型的 chart_data 结构：**
+
+Table 类型：
+```json
+{
+  "chart_data": {
+    "title": "...",
+    "columns": ["Country", "2000", "2010", "2020"],
+    "rows": [["USA", 100, 150, 200], ["UK", 80, 120, 160]],
+    "unit": "million"
   }
 }
 ```
 
-**响应 data (Part B - 大作文)：**
+Combination 类型（向后兼容旧题，新题使用 mixed）：
 ```json
 {
-  "task_type": "part_b",
-  "prompt": "Some people believe that university education should be free for all students. To what extent do you agree or disagree?"
+  "chart_data": {
+    "title": "...",
+    "categories": ["2000", "2005", "2010"],
+    "bar_series": [{"name": "Revenue", "data": [100, 200, 300]}],
+    "line_series": [{"name": "Growth Rate", "data": [5.2, 6.1, 4.8]}],
+    "bar_unit": "million",
+    "line_unit": "%"
+  }
 }
 ```
 
-### 5.2 提交作文进行评估
+Mixed 类型（双图混合题，两个独立子图）：
+```json
+{
+  "chart_data": {
+    "title": "...",
+    "sub_charts": [
+      {
+        "chart_type": "bar",
+        "chart_data": {
+          "title": "Revenue by Region",
+          "categories": ["2015", "2016", "2017"],
+          "series": [{"name": "Asia", "data": [100, 150, 200]}],
+          "unit": "million"
+        }
+      },
+      {
+        "chart_type": "pie",
+        "chart_data": {
+          "title": "Market Share 2017",
+          "categories": ["Asia", "Europe", "Americas"],
+          "series": [{"name": "Share", "data": [45, 30, 25]}],
+          "unit": "%"
+        }
+      }
+    ]
+  }
+}
+```
+
+Map 类型（地图题，两张地图对比 before/after）：
+```json
+{
+  "chart_data": {
+    "title": "Changes in Greenfield Town (1990 vs 2020)",
+    "maps": [
+      {
+        "label": "1990",
+        "width": 100,
+        "height": 100,
+        "features": [
+          {"type": "building", "id": "b1", "label": "School", "x": 20, "y": 30, "width": 15, "height": 10},
+          {"type": "road", "id": "r1", "label": "Main Street", "points": [[0,50],[100,50]]},
+          {"type": "river", "id": "rv1", "label": "River Exe", "points": [[10,0],[15,25],[20,50],[25,75],[30,100]]},
+          {"type": "park", "id": "p1", "label": "Central Park", "x": 50, "y": 40, "width": 20, "height": 20}
+        ]
+      },
+      {
+        "label": "2020",
+        "width": 100,
+        "height": 100,
+        "features": [
+          {"type": "building", "id": "b1", "label": "School", "x": 20, "y": 30, "width": 15, "height": 10},
+          {"type": "building", "id": "b2", "label": "Shopping Mall", "x": 50, "y": 40, "width": 20, "height": 15},
+          {"type": "road", "id": "r1", "label": "Main Street", "points": [[0,50],[100,50]]},
+          {"type": "river", "id": "rv1", "label": "River Exe", "points": [[10,0],[15,25],[20,50],[25,75],[30,100]]}
+        ]
+      }
+    ]
+  }
+}
+```
+
+Process 类型：
+```json
+{
+  "chart_data": {
+    "title": "Water Treatment Process",
+    "mermaid_code": "graph TD\n    A[Collection] --> B[Screening]\n    B --> C[Treatment]",
+    "steps": ["Collection", "Screening", "Treatment"]
+  }
+}
+```
+
+### 5.2 从题库随机抽取题目
+
+`POST /api/writing/random-topic`
+
+**请求体：**
+```json
+{
+  "task_type": "part_a" | "part_b" | null,  // null 则任意
+  "chart_type": "bar",  // 可选，仅 Task 1
+  "question_type": "opinion"  // 可选，仅 Task 2
+}
+```
+
+**响应：** 同 5.1 的响应格式（无 usage 字段）
+
+**错误：** 404 — 题库中无匹配题目
+
+### 5.3 Token 消耗预估
+
+`GET /api/writing/topic-estimate`
+
+**查询参数：**
+
+| 参数 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| task_type | string | 必填 | part_a 或 part_b |
+| chart_type | string | null | Task 1 的图表类型 |
+| question_type | string | null | Task 2 的题型 |
+| count | int | 1 | 预估生成数量 |
+
+**响应 data：**
+```json
+{
+  "prompt_tokens": 400,
+  "completion_tokens": 750,
+  "total_tokens": 1150,
+  "estimated_cost": 0.0023,
+  "cost_currency": "USD"
+}
+```
+
+> 注意：`estimated_cost` 和 `cost_currency` 仅在 Settings 中配置了 `token_price_input` / `token_price_output` 后才返回非零值。
+
+### 5.4 题库统计
+
+`GET /api/writing/topic-bank-stats`
+
+**响应 data：**
+```json
+{
+  "total": 150,
+  "breakdown": {
+    "part_a/bar": 22,
+    "part_a/line": 18,
+    "part_a/pie": 12,
+    "part_a/table": 12,
+    "part_a/mixed": 12,
+    "part_a/map": 10,
+    "part_a/process": 9,
+    "part_b/opinion": 11,
+    "part_b/discussion": 11,
+    "part_b/problem_solution": 11,
+    "part_b/two_part": 11,
+    "part_b/advantage_disadvantage": 11
+  }
+}
+```
+
+### 5.5 获取题库全量列表
+
+`GET /api/writing/topic-bank`
+
+**查询参数：**
+
+| 参数 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| task_type | string | null | `part_a` / `part_b` |
+| chart_type | string | null | Task 1 图表类型 |
+| question_type | string | null | Task 2 题型 |
+| difficulty | string | null | `easy` / `medium` / `hard` |
+
+**说明：** 当前题库体量约 150 道，接口默认返回全量列表，前端可本地完成搜索、筛选和分页。
+
+**响应 data：**
+```json
+{
+  "total": 150,
+  "topics": [
+    {
+      "id": "T1-BAR-0001",
+      "task_type": "part_a",
+      "prompt": "The chart below shows the percentage of households...",
+      "chart_type": "bar",
+      "chart_data": {
+        "title": "Household Energy Consumption by Source (2000-2020)",
+        "categories": ["2000", "2005", "2010", "2015", "2020"],
+        "series": [
+          { "name": "Natural Gas", "data": [42, 38, 35, 30, 25] },
+          { "name": "Electricity", "data": [30, 35, 40, 45, 50] }
+        ],
+        "unit": "%"
+      },
+      "topic_tags": ["environment", "energy"],
+      "difficulty": "medium",
+      "source": "generated"
+    }
+  ]
+}
+```
+
+### 5.6 提交作文进行评估
 
 `POST /api/writing/evaluate`
 
 **请求体：**
 ```json
 {
-  "session_id": null,           // null = 新建, 有值 = 更新已有记录
+  "session_id": null,
   "task_type": "part_b",
+  "topic_id": "T2-OPINION-0004",
   "topic": "Some people believe...",
-  "topic_data": null,            // Part A 时为 chart_data JSON
+  "topic_data": {
+    "id": "T2-OPINION-0004",
+    "task_type": "part_b",
+    "prompt": "Some people believe...",
+    "question_type": "opinion",
+    "topic_tags": ["education"],
+    "difficulty": "medium",
+    "source": "generated"
+  },
   "user_essay": "In recent years, the debate over whether..."
 }
 ```
@@ -432,7 +673,7 @@ Electron 主进程用于确认 Python 服务已就绪。
 }
 ```
 
-### 5.3 获取写作历史记录
+### 5.7 获取写作历史记录
 
 `GET /api/writing/sessions`
 
@@ -440,7 +681,9 @@ Electron 主进程用于确认 Python 服务已就绪。
 
 | 参数 | 类型 | 默认值 | 说明 |
 |------|------|--------|------|
-| task_type | string | all | 筛选: all/part_a/part_b |
+| task_type | string | all | 筛选: `all` / `part_a` / `part_b` |
+| topic_id | string | null | 按题目 ID 精确筛选 |
+| sort_by | string | latest | `latest` / `score_desc` / `score_asc` |
 | page | int | 1 | 页码 |
 | page_size | int | 20 | 每页数量 |
 
@@ -452,19 +695,116 @@ Electron 主进程用于确认 Python 服务已就绪。
     {
       "id": 42,
       "task_type": "part_b",
+      "topic_id": "T2-OPINION-0004",
       "topic": "Some people believe...",
+      "topic_data": {
+        "id": "T2-OPINION-0004",
+        "task_type": "part_b",
+        "prompt": "Some people believe...",
+        "question_type": "opinion",
+        "difficulty": "medium"
+      },
+      "word_count": 284,
       "overall_score": 6.5,
+      "scores": {
+        "tr": 6.5,
+        "cc": 7.0,
+        "lr": 6.0,
+        "gra": 6.5,
+        "overall": 6.5
+      },
       "created_at": "2026-02-17T10:30:00Z"
     }
   ]
 }
 ```
 
-### 5.4 获取单次写作详情
+### 5.8 获取单次写作详情
 
 `GET /api/writing/sessions/{session_id}`
 
-**响应 data：** 同 5.2 的完整评估结果
+**响应 data：** 返回完整评估结果，并包含 `topic_id` 与完整 `topic_data` 题目快照（Task 1 可据此重现图表 / 地图 / 流程图；前端也可用它做同题重做）。新增 `structured_report` 字段（总评摘要 + 范文 + 重写建议），保留 `report_markdown` 作为兜底。
+
+**响应 data 中的 structured_report：**
+```json
+{
+  "structured_report": {
+    "summary_title": "Overall Assessment",
+    "summary_paragraphs": ["This essay demonstrates..."],
+    "model_answer_title": "Model Answer",
+    "model_answer_paragraphs": ["In recent years, ..."],
+    "rewrite_title": "Rewrite Suggestions",
+    "rewrite_suggestions": [
+      { "text": "Replace 'very important' with 'crucial'", "source": "chief", "dimension": null }
+    ],
+    "has_model_answer": true,
+    "has_rewrite_suggestions": true
+  }
+}
+```
+
+> 当后端解析失败或老 session 无结构化数据时，`structured_report` 为 `null`，前端应 fallback 到本地 `parseChiefReport()` 解析。
+
+### 5.9 按题聚合摘要
+
+`GET /api/writing/topics/aggregate`
+
+**查询参数：**
+
+| 参数 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| task_type | string | all | `all` / `part_a` / `part_b` |
+| sort_by | string | latest | `latest` / `attempts_desc` / `best_score_desc` |
+| page | int | 1 | 页码 |
+| page_size | int | 10 | 每页数量 |
+
+**响应 data：**
+```json
+{
+  "total": 8,
+  "topics": [
+    {
+      "topic_id": "T1-BAR-0001",
+      "task_type": "part_a",
+      "topic": "The chart below shows the percentage of households...",
+      "topic_data": { "id": "T1-BAR-0001", "chart_type": "bar", "..." : "..." },
+      "attempts": 3,
+      "avg_score": 6.2,
+      "best_score": 7.0,
+      "latest_score": 6.5,
+      "latest_at": "2026-03-24T10:30:00Z"
+    }
+  ]
+}
+```
+
+### 5.10 单题趋势明细
+
+`GET /api/writing/topics/{topic_id}/trend`
+
+**响应 data：**
+```json
+{
+  "topic_id": "T1-BAR-0001",
+  "attempts": [
+    {
+      "session_id": 42,
+      "overall_score": 6.5,
+      "scores": { "tr": 6.5, "cc": 7.0, "lr": 6.0, "gra": 6.5 },
+      "word_count": 284,
+      "created_at": "2026-03-20T10:30:00Z"
+    },
+    {
+      "session_id": 48,
+      "overall_score": 7.0,
+      "scores": { "tr": 7.0, "cc": 7.0, "lr": 7.0, "gra": 7.0 },
+      "word_count": 301,
+      "created_at": "2026-03-24T09:00:00Z"
+    }
+  ]
+}
+```
+
 
 ---
 
@@ -605,18 +945,24 @@ Electron 主进程用于确认 Python 服务已就绪。
 }
 ```
 
-### 6.5 获取口语报告
+### 6.5 获取口语详情（含报告）
 
-`GET /api/speaking/sessions/{session_id}/report`
+`GET /api/speaking/sessions/{session_id}`
 
 **响应 data：**
 ```json
 {
   "session_id": 5,
   "mode": "mock_test",
+  "status": "completed",
+  "topic_card": {
+    "topic": "Describe a place you visited recently",
+    "bullet_points": ["Where it was", "When you went there", "What you did"],
+    "follow_up": "Why did you enjoy this place?"
+  },
   "transcript": [
-    { "role": "examiner", "text": "Good afternoon...", "timestamp": 0 },
-    { "role": "candidate", "text": "Good afternoon...", "timestamp": 3.2 }
+    { "role": "examiner", "content": "Good afternoon...", "phase": "part1_intro", "created_at": "..." },
+    { "role": "candidate", "content": "Good afternoon...", "phase": "part1_qa", "created_at": "..." }
   ],
   "report_markdown": "# IELTS Speaking Assessment\n\n## Pronunciation Issues\n...",
   "scores": {
@@ -625,7 +971,18 @@ Electron 主进程用于确认 Python 服务已就绪。
     "grammar_range_accuracy": 6.5,
     "pronunciation": 6.0,
     "overall": 6.25
-  }
+  },
+  "agent_reports": [
+    {
+      "dimension": "Fluency & Coherence",
+      "score": 6.5,
+      "strengths": ["..."],
+      "weaknesses": ["..."],
+      "suggestions": ["..."]
+    }
+  ],
+  "duration_seconds": 780,
+  "created_at": "2026-02-17T14:00:00Z"
 }
 ```
 

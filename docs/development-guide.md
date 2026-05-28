@@ -1,6 +1,6 @@
 # IELTS-mate 开发指南
 
-> 最后更新：2026-02-20
+> 最后更新：2026-03-24
 
 ## 1. 环境要求
 
@@ -246,30 +246,54 @@ main                    ← 稳定发布分支
 - [x] 新词 API (`GET /api/vocabulary/new-words`) + 今日摘要 API (`GET /api/vocabulary/today-summary`)
 - [x] 词汇设置 API (`GET/PUT /api/settings/vocabulary`) + 前端 Settings 页词汇设置区
 - [x] `first_learned_at` 字段 + 自动迁移 + 每日新词计数
-- [ ] ECharts 热力图 (适配光点风格, 后端 API 已就绪)
-- [ ] 拼写模式 / 听写模式 (可扩展)
+- [x] ECharts 热力图 (适配光点风格, 后端 API 已就绪)
+- [x] 拼写模式 / 听写模式
+- [x] 正式词汇统计页（Stats.tsx — 连续天数 + 高频错词 + 活动趋势 + 核心概览）
 
 **Phase 4 - 写作批改模块**
-- [ ] 实现 5-Agent 并行架构 (后端)
-- [ ] 题目生成 API (Part A 图表 JSON + Part B 文本)
-- [ ] 前端写作编辑器 UI (纸张质感)
-- [ ] ECharts 渲染 Part A 图表
-- [ ] 评分报告展示
+- [x] 设计四维评估 Prompt（注入 IELTS 官方 Band Descriptors）
+- [x] 实现 5-Agent 并行架构 (后端) + 重试机制
+- [x] 题目生成后端基础设施（Prompt 模板、题库服务、Token 预估、API 路由）
+- [x] 新增 map（地图题）和 mixed（双图混合题）题型 (后端 Prompt + 校验)
+- [x] combination → mixed 迁移（向后兼容）
+- [x] 前端图表渲染组件体系（6 组件：ECharts + Table + Mermaid + D3Map + Mixed + 分发器）
+- [x] Writing Hub 重构为三种模式入口（随机模拟/快速练习/自由选择）
+- [x] Writing Editor 替换为 ChartRenderer + 换一题/AI 生成按钮
+- [x] Settings Token 价格配置 UI
+- [x] 统一题目 ID（`T1-BAR-0001` / `T2-OPINION-0001`）并完成现有题库重编号
+- [x] 评分链路注入完整题目快照（topic_id / 结构化图表数据 / 题型 / 标签 / 难度 / 来源）
+- [x] `writing_sessions` 增加 `topic_id` 持久化，并支持按题回查历史
+- [x] Writing Report / Recent Essays 展示 `topic_id`，Report 支持回看 Task 1 图表快照
+- [x] 使用 OpenAI SDK + DeepSeek 完成首批 20 道验证后继续扩库，并最终补齐完整 150 道题库
+- [x] 完成题库去重与目标分布收敛（Task 1：22/18/12/12/12/10/9；Task 2：五种题型各 11 道）
+- [x] 评分报告展示增强（结构化解析主考官 Markdown、范文/重写建议独立展示，并保留原始 Markdown 折叠查看）
+- [x] Writing Hub 嵌入 Topic Browser（题库总览、筛选、搜索、分页、直达指定题目）
+- [x] Writing History 页面（筛选、排序、评分缩略图、分页）
+- [x] 同题重做链路（History / Report → Editor，优先复用题目快照）
+- [x] 后端结构化报告解析器（writing_report_parser.py — 总评/范文/重写建议后端组装）
+- [x] Report.tsx 优先消费后端 structured_report，保留前端 fallback
+- [x] 按题聚合 API（GET /topics/aggregate — 练习次数/平均分/最佳分/最近分）
+- [x] 按题趋势 API（GET /topics/{topic_id}/trend — 同题 attempts 时间序列）
+- [x] History 升级为 Sessions / By Topic 双视图（含趋势图和按题卡片）
 
 **Phase 5 - 口语模考模块**
-- [ ] 实现 STT/TTS 适配器
-- [ ] 实现口语状态机 (后端)
-- [ ] 实现滑动窗口 + 阶段摘要记忆
-- [ ] WebSocket 实时通信
-- [ ] 前端录音 & 波形可视化 UI
-- [ ] 计时器 & 视觉/听觉提醒
-- [ ] 口语报告生成
+- [x] 实现 STT/TTS 适配器（策略模式 + OpenAI Whisper/TTS 实现 + 工厂方法）
+- [x] 实现口语状态机 (后端 SpeakingStateMachine，Part 1→2→3 流转 + asyncio 计时器)
+- [x] 实现滑动窗口 + 阶段摘要记忆 (SpeakingMemory，8 轮滑动窗口 + Part 1 摘要注入)
+- [x] WebSocket 实时通信 (SpeakingSessionHandler，消息协调 + STT/TTS/LLM 管线)
+- [x] 前端录音 & 波形可视化 UI (useAudioRecorder + AudioVisualizer Canvas 组件)
+- [x] 计时器 & 视觉提醒 (useTimer + TimerDisplay SVG 环形进度 + 警报色)
+- [x] 口语报告生成 (4-Agent 并行评估 FC/LR/GRA/Pronunciation + Chief Examiner)
+- [x] 前端四个页面 (ChatMode / MockTest / History / Report)
+- [x] REST API 路由 (sessions 列表 + 详情查询)
+- [x] Settings 页 STT/TTS 配置 UI (Provider/Key/URL/Model/Voice + Test Connection)
 
 **Phase 6 - 完善与打包**
 - [x] Dashboard 首页仪表盘 (Bento Grid)
-- [ ] PyInstaller 后端打包
-- [ ] electron-builder 整体打包
+- [x] PyInstaller 后端打包 (`backend/backend.spec` + `get_base_dir()` 路径适配)
+- [x] electron-builder 整体打包 (`electron-builder.yml` + `extraResources` + `BACKEND_DB_PATH` → userData)
 - [ ] 跨平台测试
+- [ ] 应用图标设计 (build/icon.icns / icon.ico / icon.png)
 
 ### 4.3 代码风格
 

@@ -6,8 +6,8 @@ const getBaseUrl = async (): Promise<string> => {
     const info = await window.electronAPI.getBackendInfo()
     if (info?.baseUrl) return info.baseUrl
   }
-  // Fallback for Vite standalone preview mode (no Electron)
-  return 'http://localhost:8000'
+  // Browser preview mode: use same-origin and rely on Vite /api proxy
+  return ''
 }
 
 /* ---------- Types ---------- */
@@ -89,11 +89,11 @@ export interface NewWordsListResponse {
 export type WordOrder = 'random' | 'ielts_core' | 'difficulty_asc' | 'difficulty_desc' | 'alphabetical'
 
 export const WORD_ORDER_OPTIONS: { value: WordOrder; label: string; desc: string }[] = [
-  { value: 'random', label: '随机', desc: '随机打乱顺序' },
-  { value: 'ielts_core', label: '雅思核心优先', desc: '难度 3→4→2→5→1' },
-  { value: 'difficulty_asc', label: '由易到难', desc: '从简单词开始' },
-  { value: 'difficulty_desc', label: '由难到易', desc: '从高难度词开始' },
-  { value: 'alphabetical', label: '字母序', desc: 'A → Z 排列' },
+  { value: 'random', label: 'Random', desc: 'Shuffle words randomly' },
+  { value: 'ielts_core', label: 'IELTS Core First', desc: 'Difficulty order: 3 → 4 → 2 → 5 → 1' },
+  { value: 'difficulty_asc', label: 'Easy to Hard', desc: 'Start from simpler words' },
+  { value: 'difficulty_desc', label: 'Hard to Easy', desc: 'Start from more difficult words' },
+  { value: 'alphabetical', label: 'Alphabetical', desc: 'Sorted from A to Z' },
 ]
 
 export interface VocabSettings {
@@ -138,15 +138,18 @@ export const fetchTodaySummary = async (): Promise<TodaySummaryResponse> => {
   return (await res.json()) as TodaySummaryResponse
 }
 
+export type LearningMode = 'review' | 'learn_quiz' | 'spelling' | 'dictation'
+
 export const submitReview = async (
   wordId: number,
-  quality: 0 | 2 | 3 | 5
+  quality: 0 | 2 | 3 | 5,
+  mode: LearningMode = 'review'
 ): Promise<ReviewResultResponse> => {
   const baseUrl = await getBaseUrl()
   const res = await fetch(`${baseUrl}/api/vocabulary/${wordId}/review`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ quality })
+    body: JSON.stringify({ quality, mode })
   })
   if (!res.ok) throw new Error(`Failed to submit review: ${res.status}`)
   return (await res.json()) as ReviewResultResponse
@@ -274,6 +277,7 @@ export interface MostWrongWord {
   id: number
   word: string
   translation: string
+  definition?: string
   phonetic: string
   pos: string
   wrong_count: number
@@ -294,4 +298,28 @@ export const fetchMostWrongWords = async (limit = 20): Promise<MostWrongWordsRes
   const res = await fetch(`${baseUrl}/api/vocabulary/most-wrong?limit=${limit}`)
   if (!res.ok) throw new Error(`Failed to fetch most wrong words: ${res.status}`)
   return (await res.json()) as MostWrongWordsResponse
+}
+
+/* ---------- Activity Trend ---------- */
+
+export interface ActivityTrendPoint {
+  date: string
+  total: number
+  review: number
+  learn_quiz: number
+  spelling: number
+  dictation: number
+}
+
+export interface ActivityTrendResponse {
+  success: boolean
+  data: { days: number; data: ActivityTrendPoint[] }
+  message: string
+}
+
+export const fetchActivityTrend = async (days = 14): Promise<ActivityTrendResponse> => {
+  const baseUrl = await getBaseUrl()
+  const res = await fetch(`${baseUrl}/api/vocabulary/activity-trend?days=${days}`)
+  if (!res.ok) throw new Error(`Failed to fetch activity trend: ${res.status}`)
+  return (await res.json()) as ActivityTrendResponse
 }

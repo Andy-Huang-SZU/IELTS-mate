@@ -1,4 +1,7 @@
 export { VocabularyHub } from './Hub'
 export { VocabularyReview } from './Review'
 export { VocabularyLearn } from './Learn'
+export { VocabularyStats } from './Stats'
+export { VocabularySpelling } from './Spelling'
+export { VocabularyDictation } from './Dictation'
 export { SessionComplete } from './SessionComplete'

@@ -118,7 +118,7 @@ export const useVocabularyStore = create<VocabularyState>((set, get) => ({
     if (!word) return
 
     try {
-      await submitReview(word.id, quality)
+      await submitReview(word.id, quality, 'review')
       set({ currentIndex: currentIndex + 1 })
     } catch (e) {
       set({ error: (e as Error).message })

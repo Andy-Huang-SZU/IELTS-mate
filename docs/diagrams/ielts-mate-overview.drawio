@@ -1,0 +1,166 @@
+<mxfile host="65bd71144e" scale="8" border="0">
+    <diagram id="overview" name="IELTS-mate Overview">
+        <mxGraphModel dx="1592" dy="1160" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1200" pageHeight="900" background="none" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="bg" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#D6E4F5;strokeWidth=1;arcSize=18;opacity=95;shadow=0;" parent="1" vertex="1">
+                    <mxGeometry x="20" y="20" width="1160" height="860" as="geometry"/>
+                </mxCell>
+                <mxCell id="2" value="📘 IELTS-mate&#xa;AI 驱动的雅思备考助手" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F7FBFF;strokeColor=#3B82F6;strokeWidth=2;fontColor=#123B67;fontSize=19;fontStyle=1;arcSize=12;" parent="1" vertex="1">
+                    <mxGeometry x="350" y="40" width="500" height="82" as="geometry"/>
+                </mxCell>
+                <mxCell id="3" value="📚 背单词模块" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EEF6FF;strokeColor=#60A5FA;strokeWidth=2;fontColor=#163A63;fontSize=15;fontStyle=1;arcSize=10;" parent="1" vertex="1">
+                    <mxGeometry x="80" y="160" width="250" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="4" value="✍️ 写作模块" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EEF6FF;strokeColor=#60A5FA;strokeWidth=2;fontColor=#163A63;fontSize=15;fontStyle=1;arcSize=10;" parent="1" vertex="1">
+                    <mxGeometry x="475" y="160" width="250" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="5" value="🎤 口语模块" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EEF6FF;strokeColor=#60A5FA;strokeWidth=2;fontColor=#163A63;fontSize=15;fontStyle=1;arcSize=10;" parent="1" vertex="1">
+                    <mxGeometry x="870" y="160" width="250" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="6" value="SM-2 间隔重复算法" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8FBFF;strokeColor=#93C5FD;strokeWidth=1.5;fontColor=#274060;fontSize=12;arcSize=8;" parent="1" vertex="1">
+                    <mxGeometry x="80" y="270" width="250" height="54" as="geometry"/>
+                </mxCell>
+                <mxCell id="7" value="4 种学习模式&#xa;学习 / 复习 / 拼写 / 听写" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8FBFF;strokeColor=#93C5FD;strokeWidth=1.5;fontColor=#274060;fontSize=12;arcSize=8;" parent="1" vertex="1">
+                    <mxGeometry x="80" y="350" width="250" height="58" as="geometry"/>
+                </mxCell>
+                <mxCell id="8" value="每日限额 + 学习统计" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8FBFF;strokeColor=#93C5FD;strokeWidth=1.5;fontColor=#274060;fontSize=12;arcSize=8;" parent="1" vertex="1">
+                    <mxGeometry x="80" y="434" width="250" height="54" as="geometry"/>
+                </mxCell>
+                <mxCell id="9" value="5-Agent 并行评分&#xa;TR / CC / LR / GRA" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF7E8;strokeColor=#E6B450;strokeWidth=1.5;fontColor=#8A5A00;fontSize=12;arcSize=8;" parent="1" vertex="1">
+                    <mxGeometry x="475" y="270" width="250" height="58" as="geometry"/>
+                </mxCell>
+                <mxCell id="20" style="edgeStyle=none;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;rounded=1;strokeColor=#93A4B8;strokeWidth=1.5;align=center;verticalAlign=middle;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;endArrow=classic;endFill=1;" parent="1" source="10" target="11" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="10" value="题库系统&#xa;JSON 缓存 + AI 生成" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F1FBF7;strokeColor=#5DBB94;strokeWidth=1.5;fontColor=#14532D;fontSize=12;arcSize=8;" parent="1" vertex="1">
+                    <mxGeometry x="475" y="350" width="250" height="58" as="geometry"/>
+                </mxCell>
+                <mxCell id="11" value="4 种图表渲染引擎&#xa;ECharts / D3 / Mermaid" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8FBFF;strokeColor=#93C5FD;strokeWidth=1.5;fontColor=#274060;fontSize=12;arcSize=8;" parent="1" vertex="1">
+                    <mxGeometry x="475" y="434" width="250" height="58" as="geometry"/>
+                </mxCell>
+                <mxCell id="12" value="WebSocket 实时通信&#xa;STT → LLM → TTS" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F1FBF7;strokeColor=#5DBB94;strokeWidth=1.5;fontColor=#14532D;fontSize=12;arcSize=8;" parent="1" vertex="1">
+                    <mxGeometry x="870" y="270" width="250" height="58" as="geometry"/>
+                </mxCell>
+                <mxCell id="13" value="状态机驱动 Mock Test&#xa;Part 1 → 2 → 3" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F1FBF7;strokeColor=#5DBB94;strokeWidth=1.5;fontColor=#14532D;fontSize=12;arcSize=8;" parent="1" vertex="1">
+                    <mxGeometry x="870" y="350" width="250" height="58" as="geometry"/>
+                </mxCell>
+                <mxCell id="14" value="认知记忆管理&#xa;滑动窗口 + 摘要注入" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F6F1FF;strokeColor=#A78BFA;strokeWidth=1.5;fontColor=#5B3B99;fontSize=12;arcSize=8;" parent="1" vertex="1">
+                    <mxGeometry x="870" y="434" width="250" height="58" as="geometry"/>
+                </mxCell>
+                <mxCell id="15" value="🖥️ 前端&#xa;Electron + React + Zustand" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8FAFC;strokeColor=#94A3B8;strokeWidth=2;fontColor=#334155;fontSize=13;fontStyle=1;arcSize=8;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="640" width="250" height="86" as="geometry"/>
+                </mxCell>
+                <mxCell id="16" value="⚙️ 后端&#xa;Python FastAPI + WebSocket" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8FAFC;strokeColor=#94A3B8;strokeWidth=2;fontColor=#334155;fontSize=13;fontStyle=1;arcSize=8;" parent="1" vertex="1">
+                    <mxGeometry x="330" y="640" width="250" height="86" as="geometry"/>
+                </mxCell>
+                <mxCell id="17" value="🤖 AI 服务&lt;br&gt;LLM+TTS+STT" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F6F1FF;strokeColor=#A78BFA;strokeWidth=2;fontColor=#5B3B99;fontSize=13;fontStyle=1;arcSize=8;" parent="1" vertex="1">
+                    <mxGeometry x="620" y="640" width="250" height="86" as="geometry"/>
+                </mxCell>
+                <mxCell id="18" value="💾 SQLite 本地数据库" style="shape=cylinder3;whiteSpace=wrap;html=1;fillColor=#ECFEFF;strokeColor=#22B8CF;strokeWidth=2;fontColor=#0E5A5A;fontSize=13;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="910" y="632" width="250" height="94" as="geometry"/>
+                </mxCell>
+                <mxCell id="e1" style="edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;rounded=1;html=1;exitX=0.2;exitY=1;exitPerimeter=1;entryX=0.5;entryY=0;entryPerimeter=1;endArrow=classic;endFill=1;strokeColor=#7A8CA6;strokeWidth=2;" parent="1" source="2" target="3" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e2" style="edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;rounded=1;html=1;exitX=0.5;exitY=1;exitPerimeter=1;entryX=0.5;entryY=0;entryPerimeter=1;endArrow=classic;endFill=1;strokeColor=#7A8CA6;strokeWidth=2;" parent="1" source="2" target="4" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e3" style="edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;rounded=1;html=1;exitX=0.8;exitY=1;exitPerimeter=1;entryX=0.5;entryY=0;entryPerimeter=1;endArrow=classic;endFill=1;strokeColor=#7A8CA6;strokeWidth=2;" parent="1" source="2" target="5" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e4" style="edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;rounded=1;html=1;exitX=0.5;exitY=1;exitPerimeter=1;entryX=0.5;entryY=0;entryPerimeter=1;endArrow=classic;endFill=1;strokeColor=#93A4B8;strokeWidth=1.5;" parent="1" source="3" target="6" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e5" style="edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;rounded=1;html=1;exitX=0.5;exitY=1;entryX=0.5;entryY=0;entryPerimeter=1;endArrow=classic;endFill=1;strokeColor=#93A4B8;strokeWidth=1.5;exitDx=0;exitDy=0;" parent="1" source="6" target="7" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e6" style="edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;rounded=1;html=1;exitX=0.5;exitY=1;entryX=0.5;entryY=0;entryPerimeter=1;endArrow=classic;endFill=1;strokeColor=#93A4B8;strokeWidth=1.5;exitDx=0;exitDy=0;" parent="1" source="7" target="8" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e7" style="edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;rounded=1;html=1;exitX=0.5;exitY=1;exitPerimeter=1;entryX=0.5;entryY=0;entryPerimeter=1;endArrow=classic;endFill=1;strokeColor=#93A4B8;strokeWidth=1.5;" parent="1" source="4" target="9" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e8" style="edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;rounded=1;html=1;exitX=0.5;exitY=1;entryX=0.5;entryY=0;entryPerimeter=1;endArrow=classic;endFill=1;strokeColor=#93A4B8;strokeWidth=1.5;exitDx=0;exitDy=0;" parent="1" source="9" target="10" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e9" style="edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;rounded=1;html=1;exitX=0.5;exitY=1;exitPerimeter=1;entryX=0.5;entryY=0;endArrow=classic;endFill=1;strokeColor=#93A4B8;strokeWidth=1.5;entryDx=0;entryDy=0;" parent="1" source="4" target="9" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e10" style="edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;rounded=1;html=1;exitX=0.5;exitY=1;exitPerimeter=1;entryX=0.5;entryY=0;entryPerimeter=1;endArrow=classic;endFill=1;strokeColor=#93A4B8;strokeWidth=1.5;" parent="1" source="5" target="12" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e11" style="edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;rounded=1;html=1;exitX=0.5;exitY=1;entryX=0.5;entryY=0;entryPerimeter=1;endArrow=classic;endFill=1;strokeColor=#93A4B8;strokeWidth=1.5;exitDx=0;exitDy=0;" parent="1" source="12" target="13" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e12" style="edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;rounded=1;html=1;exitX=0.5;exitY=1;entryX=0.5;entryY=0;entryPerimeter=1;endArrow=classic;endFill=1;strokeColor=#93A4B8;strokeWidth=1.5;exitDx=0;exitDy=0;" parent="1" source="13" target="14" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e13" style="edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;rounded=1;html=1;exitX=0.5;exitY=0;exitPerimeter=1;entryX=0.2;entryY=1;entryPerimeter=1;endArrow=classic;endFill=1;strokeColor=#94A3B8;strokeWidth=1.5;dashed=1;dashPattern=6 4;" parent="1" source="15" target="2" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="165" y="600"/>
+                            <mxPoint x="450" y="600"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e14" style="edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;rounded=1;html=1;exitX=0.5;exitY=0;exitPerimeter=1;entryX=0.328;entryY=0.998;endArrow=classic;endFill=1;strokeColor=#94A3B8;strokeWidth=1.5;dashed=1;dashPattern=6 4;entryDx=0;entryDy=0;entryPerimeter=0;" parent="1" source="16" target="2" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="455" y="600"/>
+                            <mxPoint x="430" y="600"/>
+                            <mxPoint x="430" y="150"/>
+                            <mxPoint x="514" y="150"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e15" style="edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;rounded=1;html=1;exitX=0.5;exitY=0;exitPerimeter=1;entryX=0;entryY=0.5;endArrow=classic;endFill=1;strokeColor=#A78BFA;strokeWidth=1.5;dashed=1;dashPattern=6 4;entryDx=0;entryDy=0;" parent="1" source="17" target="9" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="745" y="540"/>
+                            <mxPoint x="410" y="540"/>
+                            <mxPoint x="410" y="299"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e16" style="edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;rounded=1;html=1;exitX=0.5;exitY=0;exitPerimeter=1;entryX=0;entryY=0.5;endArrow=classic;endFill=1;strokeColor=#A78BFA;strokeWidth=1.5;dashed=1;dashPattern=6 4;entryDx=0;entryDy=0;" parent="1" source="17" target="12" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="745" y="590"/>
+                            <mxPoint x="830" y="590"/>
+                            <mxPoint x="830" y="299"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e17" style="edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;rounded=1;html=1;exitX=0.2;exitY=0;exitPerimeter=1;entryX=0;entryY=0.5;endArrow=classic;endFill=1;strokeColor=#22B8CF;strokeWidth=1.5;dashed=1;dashPattern=6 4;entryDx=0;entryDy=0;" parent="1" source="18" target="3" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="960" y="570"/>
+                            <mxPoint x="50" y="570"/>
+                            <mxPoint x="50" y="190"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e18" style="edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;rounded=1;html=1;exitX=0.5;exitY=0;exitPerimeter=1;entryX=1;entryY=0.5;endArrow=classic;endFill=1;strokeColor=#22B8CF;strokeWidth=1.5;dashed=1;dashPattern=6 4;entryDx=0;entryDy=0;" parent="1" source="18" target="4" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="1035" y="540"/>
+                            <mxPoint x="750" y="540"/>
+                            <mxPoint x="750" y="190"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e19" style="edgeStyle=orthogonalEdgeStyle;orthogonalLoop=1;rounded=1;html=1;exitX=0.8;exitY=0;exitPerimeter=1;entryX=1;entryY=0.5;endArrow=classic;endFill=1;strokeColor=#22B8CF;strokeWidth=1.5;dashed=1;dashPattern=6 4;entryDx=0;entryDy=0;" parent="1" source="18" target="5" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="1110" y="550"/>
+                            <mxPoint x="1150" y="550"/>
+                            <mxPoint x="1150" y="190"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+</mxfile>

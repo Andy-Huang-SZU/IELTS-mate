@@ -13,8 +13,9 @@ class WritingSession(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     task_type: Mapped[str] = mapped_column(String(16), nullable=False)  # part_a | part_b
+    topic_id: Mapped[str | None] = mapped_column(String(32), nullable=True, index=True)
     topic: Mapped[str] = mapped_column(Text, nullable=False)
-    topic_data: Mapped[str | None] = mapped_column(Text, nullable=True)  # JSON for chart_data (Part A)
+    topic_data: Mapped[str | None] = mapped_column(Text, nullable=True)  # JSON topic snapshot
     user_essay: Mapped[str] = mapped_column(Text, default="", nullable=False)
     word_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
 

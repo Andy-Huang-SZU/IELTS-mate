@@ -18,6 +18,17 @@ class SettingsPayload(BaseModel):
     tts_model: str = Field(default="tts-1")
     tts_voice: str = Field(default="alloy")
 
+    # Topic generation LLM — can share the evaluation LLM or use independent config
+    topicgen_use_same_llm: bool = Field(default=True)
+    topicgen_provider: str = Field(default="openai_compatible")
+    topicgen_api_key: str = Field(default="")
+    topicgen_base_url: str = Field(default="https://api.openai.com/v1")
+    topicgen_model: str = Field(default="deepseek-chat")
+
+    # Token pricing — $/million tokens for cost estimation display
+    token_price_input: float = Field(default=0.0, description="Input token price in $/million tokens")
+    token_price_output: float = Field(default=0.0, description="Output token price in $/million tokens")
+
     model_config = ConfigDict(extra="forbid")
 
 
@@ -41,6 +52,13 @@ class SettingsUpdateRequest(BaseModel):
     tts_base_url: str | None = None
     tts_model: str | None = None
     tts_voice: str | None = None
+    topicgen_use_same_llm: bool | None = None
+    topicgen_provider: str | None = None
+    topicgen_api_key: str | None = None
+    topicgen_base_url: str | None = None
+    topicgen_model: str | None = None
+    token_price_input: float | None = None
+    token_price_output: float | None = None
 
     model_config = ConfigDict(extra="forbid")
 

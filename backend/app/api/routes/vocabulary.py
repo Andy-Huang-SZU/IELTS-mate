@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db_session
 from app.schemas.vocabulary import (
+    ActivityTrendResponse,
     BookmarkRequest,
     BookmarkedWordsData,
     BookmarkedWordsResponse,
@@ -28,6 +29,7 @@ from app.schemas.vocabulary import (
     VocabularyStatsResponse,
 )
 from app.services.vocabulary_service import (
+    get_activity_trend,
     get_bookmarked_words,
     get_distractors,
     get_due_words,
@@ -93,7 +95,7 @@ async def review_word(
     word_id: int, request: VocabularyReviewRequest, session: AsyncSession = Depends(get_db_session)
 ) -> VocabularyReviewResultResponse:
     try:
-        result = await submit_review(session, word_id=word_id, quality=request.quality)
+        result = await submit_review(session, word_id=word_id, quality=request.quality, mode=request.mode)
         return VocabularyReviewResultResponse(data=result)
     except ValueError as error:
         raise HTTPException(status_code=404, detail=str(error)) from error
@@ -125,6 +127,15 @@ async def get_learning_curve(
 ) -> VocabularyLearningCurveResponse:
     data = await get_learning_curve_data(session, days=days)
     return VocabularyLearningCurveResponse(data=data)
+
+
+@router.get("/activity-trend", response_model=ActivityTrendResponse)
+async def get_activity_trend_endpoint(
+    days: int = Query(default=14, ge=1, le=90),
+    session: AsyncSession = Depends(get_db_session),
+) -> ActivityTrendResponse:
+    data = await get_activity_trend(session, days=days)
+    return ActivityTrendResponse(data=data)
 
 
 @router.get("/search", response_model=VocabularySearchResponse)

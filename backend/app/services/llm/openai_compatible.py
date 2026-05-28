@@ -1,10 +1,15 @@
 from __future__ import annotations
 
+import ssl
 import time
 
 import httpx
 
-from app.services.llm.base import BaseLLMClient, LLMConnectionTestResult
+from app.services.llm.base import BaseLLMClient, ChatResult, LLMConnectionTestResult, TokenUsage
+
+# Use a proper SSL context to avoid compatibility issues with some third-party
+# API gateways (e.g. AiHubMix) where the default httpx SSL handling may fail.
+_SSL_CTX = ssl.create_default_context()
 
 
 class OpenAICompatibleLLMClient(BaseLLMClient):
@@ -24,7 +29,7 @@ class OpenAICompatibleLLMClient(BaseLLMClient):
 
         started_at = time.perf_counter()
         try:
-            async with httpx.AsyncClient(timeout=12.0) as client:
+            async with httpx.AsyncClient(timeout=12.0, verify=_SSL_CTX) as client:
                 response = await client.get(
                     f"{self.base_url}/models",
                     headers={"Authorization": f"Bearer {self.api_key}"},
@@ -57,8 +62,8 @@ class OpenAICompatibleLLMClient(BaseLLMClient):
         messages: list[dict[str, str]],
         temperature: float = 0.7,
         max_tokens: int = 4096,
-    ) -> str:
-        async with httpx.AsyncClient(timeout=120.0) as client:
+    ) -> ChatResult:
+        async with httpx.AsyncClient(timeout=120.0, verify=_SSL_CTX) as client:
             response = await client.post(
                 f"{self.base_url}/chat/completions",
                 headers={
@@ -74,4 +79,15 @@ class OpenAICompatibleLLMClient(BaseLLMClient):
             )
             response.raise_for_status()
             data = response.json()
-            return data["choices"][0]["message"]["content"]
+            content = data["choices"][0]["message"]["content"]
+
+            usage = None
+            if "usage" in data and data["usage"]:
+                u = data["usage"]
+                usage = TokenUsage(
+                    prompt_tokens=u.get("prompt_tokens", 0),
+                    completion_tokens=u.get("completion_tokens", 0),
+                    total_tokens=u.get("total_tokens", 0),
+                )
+
+            return ChatResult(content=content, usage=usage)

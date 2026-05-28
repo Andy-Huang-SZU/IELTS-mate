@@ -1,1 +1,5 @@
 export { SpeakingHub } from './Hub'
+export { ChatMode } from './ChatMode'
+export { MockTest } from './MockTest'
+export { SpeakingHistory } from './History'
+export { SpeakingReport } from './Report'

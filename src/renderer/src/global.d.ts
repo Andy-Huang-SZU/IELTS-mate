@@ -5,7 +5,7 @@ type BackendInfo = {
 }
 
 interface Window {
-  electronAPI: {
+  electronAPI?: {
     appName: string
     getBackendInfo: () => Promise<BackendInfo>
     pingBackendRest: () => Promise<{ ok: boolean; error?: string }>

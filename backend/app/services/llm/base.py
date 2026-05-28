@@ -11,6 +11,19 @@ class LLMConnectionTestResult:
     message: str = ""
 
 
+@dataclass
+class TokenUsage:
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+    total_tokens: int = 0
+
+
+@dataclass
+class ChatResult:
+    content: str
+    usage: TokenUsage | None = None
+
+
 class BaseLLMClient:
     async def test_connection(self) -> LLMConnectionTestResult:
         raise NotImplementedError
@@ -20,6 +33,6 @@ class BaseLLMClient:
         messages: list[dict[str, str]],
         temperature: float = 0.7,
         max_tokens: int = 4096,
-    ) -> str:
-        """Send a chat completion request and return the assistant message text."""
+    ) -> ChatResult:
+        """Send a chat completion request and return ChatResult with content and token usage."""
         raise NotImplementedError

@@ -40,6 +40,7 @@ class VocabularyReviewListResponse(BaseModel):
 
 class VocabularyReviewRequest(BaseModel):
     quality: int = Field(description="0=Again, 2=Hard, 3=Good, 5=Easy")
+    mode: str = Field(default="review", description="review | learn_quiz | spelling | dictation")
 
 
 class VocabularyReviewResultData(BaseModel):
@@ -208,4 +209,27 @@ class MostWrongWordsData(BaseModel):
 class MostWrongWordsResponse(BaseModel):
     success: bool = True
     data: MostWrongWordsData
+    message: str = "ok"
+
+
+# ---- Activity Trend schemas (for Stats page) ----
+
+
+class ActivityTrendPoint(BaseModel):
+    date: date
+    total: int
+    review: int = 0
+    learn_quiz: int = 0
+    spelling: int = 0
+    dictation: int = 0
+
+
+class ActivityTrendData(BaseModel):
+    days: int
+    data: list[ActivityTrendPoint]
+
+
+class ActivityTrendResponse(BaseModel):
+    success: bool = True
+    data: ActivityTrendData
     message: str = "ok"

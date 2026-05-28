@@ -2,7 +2,10 @@
 
 该方案将重点放在 **"轻盈"、"流动"与"触感"** 上，并提供了具体的代码实现思路，确保开发落地的还原度。
 
+> 最后更新：2026-03-24
+
 ---
+
 
 # 前端设计方案：Flux Academy (Light Mode)
 
@@ -168,9 +171,40 @@ const useMouseFollow = (ref, delay) => {
 
 **背景区分**：从透明渐变到 `rgba(235,232,224,0.88)`，与 Canvas `#F7F6F2` 形成微妙区分。
 
+### 3.3 写作报告页（Structured Assessment Cards）
+**目标**：让写作报告既保留数据化评分的精确性，又能把主考官的长 Markdown 报告拆成更容易吸收的学习卡片。
+
+**布局原则**：
+1. **先结构化，后全文**：优先展示 Overall Summary、Model Answer、Rewrite Suggestions，再把原始 Markdown 作为折叠面板放在后面，避免用户先面对大段长文。
+2. **双栏阅读节奏**：左侧使用较宽的范文卡片承载长段文本，右侧使用较窄的建议卡片承载可执行 rewrite action，形成“示范 + 行动”对照。
+3. **容错优先**：如果主考官 Markdown 缺少独立标题，前端要回退到四维 `agent_reports.*.suggestions`，保证报告页始终有可读建议。
+4. **保留可追溯性**：折叠区展示原始 Markdown，便于调试解析结果，也方便后续把结构化逻辑上移到后端时做对照验证。
+
+**视觉模式**：
+- Summary 卡片：使用与总体评分一致的暖色强调，承载主考官总评段落。
+- Model Answer 卡片：正文优先，使用更宽的内容列与更舒适的段落间距。
+- Rewrite Suggestions 卡片：使用编号块 + 浅蓝提示底色，强调“下一步怎么改”。
+- Raw Markdown 卡片：默认折叠，信息层级低于结构化内容。
+
+### 3.4 写作 Hub / History 复盘流（Topic Browser + History Cards）
+**目标**：把“开始练习”“浏览题库”“回看历史”“重做同题”组织成一条连续学习动线，而不是分散在多个割裂入口里。
+
+**布局原则**：
+1. **Hub 内嵌题库，而不是跳走新页面**：Topic Browser 折叠在 `Writing Hub` 中，默认不打断主入口，但一展开就能直接浏览全部题库。
+2. **筛选优先于滚动**：题库浏览器先给 Task / 子题型 / 难度 / 搜索，再给分页；避免用户在 150 条题目里盲目滚动。
+3. **历史卡片强调“复盘”而不是“纯列表”**：History 卡片不仅展示题目摘要，还要同时给出总分、四维缩略图、字数、日期和重做按钮。
+4. **重做必须回到原题**：从 History / Report 进入 Editor 时，优先传完整 `topic_data` 快照；只有缺快照时才退回 `topicId` 精准加载。
+
+**视觉模式**：
+- Topic Browser：使用与 Free Choice 同层级的 `GlassCard`，但通过折叠标题 + 题量数字降低默认视觉负担。
+- 历史缩略图：用轻量 SVG 四维雷达图提供“这一篇整体表现形状”的直观感受，再用 Overall badge 做快速判断。
+- History 卡片操作区：一个次级按钮（`View Report`）+ 一个强调按钮（`Redo Topic`），明确区分“回看分析”和“立即重做”。
+
 ---
 
+
 ## 4. 动画编排 (Animation Orchestration)
+
 
 不要让所有元素同时出现。使用**交错动画 (Stagger)**。
 
@@ -220,3 +254,97 @@ const itemVariants = {
     *   添加全局字体。
     *   调整阴影和模糊半径，确保在浅色背景下文字依然清晰可见。
     *   测试窗口缩放时的流体布局适配。
+
+---
+
+## 6. 图表渲染组件体系 (2026-03-17 新增)
+
+写作模块 Task 1 使用 6 个专业渲染组件，均位于 `src/renderer/src/pages/Writing/components/`：
+
+### 6.1 ChartRenderer（分发器）
+- 根据 `chart_type` 属性使用 `React.lazy()` 动态加载对应渲染器
+- 统一 `Suspense` fallback（加载占位骨架）
+- 支持类型：bar / line / pie / table / process / map / mixed / combination
+
+### 6.2 EChartsRenderer
+- 技术：Apache ECharts 6 + `useRef` + 动态 `import('echarts')`
+- 支持 4 种 option 构建：`buildBarOption` / `buildLineOption` / `buildPieOption` / `buildDualAxisOption`
+- Flux 配色：`#5EEAD4`, `#74B9FF`, `#FDCB6E`, `#E17055`, `#A78BFA`
+- 圆角 bar（borderRadius:4）、平滑曲线（smooth:true）
+- `ResizeObserver`（100ms debounce）响应容器尺寸变化
+
+### 6.3 TableRenderer
+- 技术：纯 HTML `<table>` + Tailwind CSS
+- 交替行背景：white/40 ↔ #F7F6F2/60
+- 表头淡绿背景（#5EEAD4/10），紧凑布局
+- 显示 unit 信息
+
+### 6.4 ProcessFlowRenderer（2026-03-23 替换 MermaidRenderer）
+- 技术：纯 HTML/CSS/React 自绘，零额外依赖（移除 Mermaid.js）
+- 蛇形折行布局：根据容器宽度自动计算每行节点数（2-5 个）
+  - 奇数行从左到右（→），偶数行从右到左（←）
+  - 行间用垂直下箭头连接，精确对齐到尾部卡片中心
+- 数据源：仅使用 `chart_data.steps` 字符串数组（不再依赖 `mermaid_code`）
+- 节点样式：圆角卡片 + 彩色序号徽章（循环使用 Flux 六色板）
+- 箭头：水平方向用 SVG inline 箭头，换行用垂直箭头
+- 响应式：`ResizeObserver` 监听容器宽度变化，动态调整每行个数
+- 交互：hover 时卡片背景微亮（`hover:bg-white/60`）
+- 兼容性：旧题目的 `mermaid_code` 字段被忽略但不报错
+
+### 6.5 D3MapRenderer
+- 技术：D3.js 7 (`d3-selection`) + SVG
+- 归一化 0-100 坐标系，映射到实际 SVG 尺寸
+- Feature 类型 → SVG 元素映射：
+  - building → `rect`（灰色填充）
+  - road → `path`（粗灰线，curveLinear）
+  - river → `path`（蓝色曲线，curveBasis）
+  - park → `rect`（淡绿填充）
+  - lake → `rect`（淡蓝填充）
+  - area → `rect`（淡黄填充）
+  - label → `text`
+- 两张地图上下排列（before/after），配标签
+- 淡米色背景、柔和填充、小字标注
+
+### 6.6 MixedChartRenderer
+- 技术：容器组件，内部使用 `React.lazy` 加载 EChartsRenderer / TableRenderer
+- 两个子图上下排列，中间 divider 分隔
+- 每个 sub_chart 独立渲染，根据 chart_type 分发
+- 异常处理：sub_charts 长度 <2 时显示第一个子图或错误提示
+
+---
+
+## 7. 新增设计模式 (2026-03-24)
+
+### 7.1 训练模式入口卡片 (Hub Training Cards)
+- **用途**：在 Vocabulary Hub 中为拼写/听写/统计提供三列网格入口
+- **布局**：`grid-cols-3` 等分，每张卡片独立色彩主题
+  - Spelling: 蓝色系 (`#74B9FF` 渐变)
+  - Dictation: 紫色系 (`#A78BFA` 渐变)
+  - Statistics: 黄色系 (`#FDCB6E` 渐变)
+- **交互**：hover scale(1.02) + shadow lift，按钮常驻可点
+
+### 7.2 Segmented Control 视图切换 (View Mode Tabs)
+- **用途**：在 Writing History 页切换 Sessions / By Topic 两种视图
+- **布局**：圆角容器背景 `#F0F0EC`，内部两个等分 pill 按钮
+- **选中态**：白色背景 + 阴影 + 深色文字，未选中态灰色文字
+- **图标**：`List` (Sessions) + `Layers` (By Topic)，保持小尺寸 13px
+
+### 7.3 可展开趋势面板 (Expandable Trend Panel)
+- **用途**：在 By Topic 卡片中展开同题分数趋势图和 attempts 列表
+- **触发**：「趋势」按钮，选中态紫色高亮
+- **布局**：展开区域使用 `border-top` 分隔，浅白透明背景
+- **趋势图**：`TopicTrendChart` 轻量 SVG 折线图，颜色根据最新分数动态变化（绿 ≥7 / 黄 ≥5.5 / 红 <5.5）
+- **动画**：`animate-fade-in` 展开过渡
+
+### 7.4 轻量 SVG 趋势图 (TopicTrendChart)
+- **用途**：展示同题分数时间序列
+- **技术**：纯 SVG，无额外图表库依赖
+- **视觉**：渐变填充折线区域 + 圆点节点 + 分数标签 + 日期 X 轴
+- **色彩自适应**：根据最近分数自动选择主色调
+- **尺寸**：高度固定 160px，宽度自适应容器
+
+### 7.5 逐字母拼写反馈 (Letter Feedback)
+- **用途**：Spelling 模式提交后展示逐字母对比
+- **布局**：字母等宽排列，每个字母独立圆角背景
+- **颜色**：正确字母绿色背景 (`#00B894/12`)，错误字母红色背景 (`#E17055/12`)
+- **文字**：monospace 字体，保持等宽对齐

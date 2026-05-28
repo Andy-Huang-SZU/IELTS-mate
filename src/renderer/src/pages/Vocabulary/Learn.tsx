@@ -31,9 +31,9 @@ function shuffleArray<T>(arr: T[]): T[] {
 }
 
 const PHASE_LABELS: Record<Phase, { text: string; gradient: string }> = {
-  round1: { text: '第一轮 · 初次认识', gradient: 'from-[#E17055]/10 to-[#FDCB6E]/10' },
-  round2: { text: '第二轮 · 巩固记忆', gradient: 'from-[#00B894]/10 to-[#5EEAD4]/10' },
-  retry: { text: '错词重考', gradient: 'from-[#A78BFA]/10 to-[#FDCB6E]/10' },
+  round1: { text: 'Round 1 · First Encounter', gradient: 'from-[#E17055]/10 to-[#FDCB6E]/10' },
+  round2: { text: 'Round 2 · Reinforcement', gradient: 'from-[#00B894]/10 to-[#5EEAD4]/10' },
+  retry: { text: 'Retry Incorrect Words', gradient: 'from-[#A78BFA]/10 to-[#FDCB6E]/10' },
 }
 
 export function VocabularyLearn(): JSX.Element {
@@ -166,11 +166,11 @@ export function VocabularyLearn(): JSX.Element {
     if (choice.isCorrect) {
       setChoiceState('correct')
       setSessionCorrect((c) => c + 1)
-      await submitReview(word.id, 3)
+      await submitReview(word.id, 3, 'learn_quiz')
     } else {
       setChoiceState('wrong')
       setSessionWrong((c) => c + 1)
-      await submitReview(word.id, 0)
+      await submitReview(word.id, 0, 'learn_quiz')
     }
   }, [choiceState, choices, word])
 
@@ -315,13 +315,13 @@ export function VocabularyLearn(): JSX.Element {
     return (
       <PageContainer className="flex min-h-[70vh] flex-col items-center justify-center">
         <GlassCard className="max-w-sm p-8 text-center animate-fade-in" hover>
-          <h2 className="text-lg font-semibold text-[#2D3436]">今日新词已学完！</h2>
-          <p className="mt-2 text-sm text-[#636E72]">已达到每日新词上限，明天再来学习新词吧。</p>
+          <h2 className="text-lg font-semibold text-[#2D3436]">You've completed today's new words!</h2>
+          <p className="mt-2 text-sm text-[#636E72]">Daily new-word limit reached. Come back tomorrow.</p>
           <button
             onClick={() => navigate('/vocabulary')}
             className="mt-5 rounded-xl bg-white/50 px-6 py-2.5 text-sm font-medium text-[#2D3436] backdrop-blur transition-all hover:bg-white/70 active:scale-95"
           >
-            返回
+            Back
           </button>
         </GlassCard>
       </PageContainer>
@@ -333,20 +333,20 @@ export function VocabularyLearn(): JSX.Element {
     return (
       <PageContainer className="flex min-h-[70vh] flex-col items-center justify-center">
         <GlassCard className="max-w-sm p-8 text-center animate-fade-in" hover>
-          <h2 className="text-lg font-semibold text-[#E17055]">加载失败</h2>
+          <h2 className="text-lg font-semibold text-[#E17055]">Failed to load</h2>
           <p className="mt-2 text-sm text-[#636E72]">{error}</p>
           <div className="mt-5 flex gap-3 justify-center">
             <button
               onClick={() => loadNewWords()}
               className="rounded-xl bg-[#E17055] px-6 py-2.5 text-sm font-medium text-white transition-all hover:bg-[#d35f46] active:scale-95"
             >
-              重试
+              Retry
             </button>
             <button
               onClick={() => navigate('/vocabulary')}
               className="rounded-xl bg-white/50 px-6 py-2.5 text-sm font-medium text-[#2D3436] backdrop-blur transition-all hover:bg-white/70 active:scale-95"
             >
-              返回
+              Back
             </button>
           </div>
         </GlassCard>
@@ -356,7 +356,7 @@ export function VocabularyLearn(): JSX.Element {
 
   return (
     <PageContainer className="flex min-h-[80vh] flex-col">
-      <h1 className="sr-only">新词学习</h1>
+      <h1 className="sr-only">New Words</h1>
 
       {/* Top bar */}
       <div className="mb-5 flex items-center gap-4 animate-fade-in">
@@ -364,7 +364,7 @@ export function VocabularyLearn(): JSX.Element {
           onClick={() => navigate('/vocabulary')}
           className="flex items-center gap-1.5 text-sm text-[#636E72] transition-colors hover:text-[#2D3436]"
         >
-          <ArrowLeft size={16} /> 返回
+          <ArrowLeft size={16} /> Back
         </button>
 
         {/* Order switcher */}
@@ -373,7 +373,7 @@ export function VocabularyLearn(): JSX.Element {
             onClick={() => setShowOrderMenu((v) => !v)}
             className="flex items-center gap-1 rounded-lg bg-white/40 px-2.5 py-1.5 text-[11px] text-[#636E72] backdrop-blur hover:bg-white/60 transition-all"
           >
-            {WORD_ORDER_OPTIONS.find(o => o.value === currentOrder)?.label ?? '随机'}
+            {WORD_ORDER_OPTIONS.find(o => o.value === currentOrder)?.label ?? 'Random'}
             <ChevronDown size={10} className={`transition-transform ${showOrderMenu ? 'rotate-180' : ''}`} />
           </button>
           {showOrderMenu && (
@@ -395,7 +395,7 @@ export function VocabularyLearn(): JSX.Element {
 
         <div className="flex-1 max-w-[400px] mx-auto">
           <div className="flex justify-between mb-1">
-            <span className="text-[11px] text-[#636E72]">新词学习</span>
+            <span className="text-[11px] text-[#636E72]">New Words</span>
             <span className="text-[11px] text-[#2D3436] font-semibold">
               {loading ? '...' : `${Math.min(queueIndex + 1, totalInPhase)} / ${totalInPhase}`}
             </span>
@@ -412,7 +412,7 @@ export function VocabularyLearn(): JSX.Element {
       {/* Phase indicator */}
       <div className={`mx-auto mb-4 rounded-full bg-gradient-to-r ${phaseInfo.gradient} px-4 py-1.5 animate-fade-in`}>
         <span className="text-xs font-medium text-[#2D3436]">{phaseInfo.text}
-          {phase === 'retry' && <span className="ml-1 text-[#E17055]">· 还有 {queue.length - queueIndex} 词</span>}
+          {phase === 'retry' && <span className="ml-1 text-[#E17055]">· {queue.length - queueIndex} words left</span>}
         </span>
       </div>
 
@@ -421,7 +421,7 @@ export function VocabularyLearn(): JSX.Element {
       )}
 
       {loading && !word && (
-        <div className="flex-1 flex items-center justify-center text-sm text-[#636E72] animate-pulse">加载中...</div>
+        <div className="flex-1 flex items-center justify-center text-sm text-[#636E72] animate-pulse">Loading...</div>
       )}
 
       {/* Quiz card */}
@@ -540,13 +540,13 @@ export function VocabularyLearn(): JSX.Element {
                     }`}
                 >
                   <Bookmark size={12} fill={isBookmarked ? '#FDCB6E' : 'none'} />
-                  {isBookmarked ? '已收藏' : '收藏'}
+                  {isBookmarked ? 'Bookmarked' : 'Bookmark'}
                   <kbd className="ml-1 px-1 py-0.5 rounded bg-black/5 text-[9px] font-mono">N</kbd>
                 </button>
                 {isBookmarked && !showNoteInput && noteText && (
                   <button onClick={() => setShowNoteInput(true)}
                     className="flex items-center gap-1 text-[10px] text-[#636E72] hover:text-[#2D3436] transition-colors">
-                    <Pencil size={10} /> 编辑笔记
+                    <Pencil size={10} /> Edit note
                   </button>
                 )}
               </div>
@@ -556,28 +556,28 @@ export function VocabularyLearn(): JSX.Element {
                   <input
                     value={noteText}
                     onChange={e => setNoteText(e.target.value)}
-                    placeholder="写笔记..."
+                    placeholder="Write a note..."
                     className="flex-1 text-[11px] rounded-xl bg-white/50 border border-white/40 px-3 py-2 outline-none focus:border-[#00B894]/40 text-[#2D3436] backdrop-blur"
                     autoFocus
                     onKeyDown={e => { if (e.key === 'Enter') handleSaveNote() }}
                   />
                   <button onClick={handleSaveNote}
                     className="rounded-xl bg-[#00B894]/10 px-3 py-2 text-[11px] text-[#00B894] font-medium hover:bg-[#00B894]/20 transition-colors">
-                    保存
+                    Save
                   </button>
                 </div>
               )}
               {/* Detail + Next */}
               <div className="flex items-center justify-between">
                 <button onClick={() => setShowDetail((d) => !d)} className="flex items-center gap-1.5 text-xs text-[#636E72] hover:text-[#2D3436] transition-colors">
-                  {showDetail ? '收起详情' : '查看详情'}
+                  {showDetail ? 'Hide details' : 'Show details'}
                   <kbd className="ml-1 px-1.5 py-0.5 rounded bg-black/5 text-[10px] font-mono">E</kbd>
                 </button>
                 <button
                   onClick={handleNext}
                   className="flex items-center gap-1.5 rounded-full bg-[#E17055] px-5 py-2.5 text-sm font-medium text-white shadow-lg shadow-[#E17055]/20 transition-all hover:shadow-xl hover:scale-[1.03] active:scale-95"
                 >
-                  下一个
+                  Next
                   <kbd className="ml-1 px-1.5 py-0.5 rounded bg-white/20 text-[10px] font-mono">Space</kbd>
                 </button>
               </div>
@@ -586,10 +586,10 @@ export function VocabularyLearn(): JSX.Element {
 
           {/* Keyboard hints */}
           <div className="flex justify-center gap-4 mt-3 text-[10px] text-[#B2BEC3]">
-            <span><kbd className="px-1.5 py-0.5 rounded bg-black/5 font-mono text-[9px]">1-4</kbd> 选择</span>
-            <span><kbd className="px-1.5 py-0.5 rounded bg-black/5 font-mono text-[9px]">Space</kbd> 下一个</span>
-            <span><kbd className="px-1.5 py-0.5 rounded bg-black/5 font-mono text-[9px]">E</kbd> 详情</span>
-            <span><kbd className="px-1.5 py-0.5 rounded bg-black/5 font-mono text-[9px]">N</kbd> 收藏</span>
+            <span><kbd className="px-1.5 py-0.5 rounded bg-black/5 font-mono text-[9px]">1-4</kbd> Select</span>
+            <span><kbd className="px-1.5 py-0.5 rounded bg-black/5 font-mono text-[9px]">Space</kbd> Next</span>
+            <span><kbd className="px-1.5 py-0.5 rounded bg-black/5 font-mono text-[9px]">E</kbd> Details</span>
+            <span><kbd className="px-1.5 py-0.5 rounded bg-black/5 font-mono text-[9px]">N</kbd> Bookmark</span>
           </div>
 
           {/* Bottom stats */}

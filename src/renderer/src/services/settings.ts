@@ -10,7 +10,7 @@ const getBaseUrl = async (): Promise<string> => {
     const info = await window.electronAPI.getBackendInfo()
     if (info?.baseUrl) return info.baseUrl
   }
-  return 'http://localhost:8000'
+  return ''
 }
 
 export const fetchSettings = async (): Promise<SettingsResponse> => {

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   BookOpen, RotateCcw, Minus, Plus, Award, TrendingUp, Layers, BarChart3,
-  AlertTriangle, Bookmark, Star, ChevronRight, Pencil, X as XIcon, Check, Flame
+  AlertTriangle, Bookmark, Star, ChevronRight, Pencil, X as XIcon, Check, Flame, Activity, Volume2
 } from 'lucide-react'
 import { GlassCard, PageContainer } from '../../components/flux'
 import { useVocabularyStore } from '../../store/useVocabularyStore'
@@ -22,7 +22,7 @@ function LearningCurveChart() {
     fetchLearningCurve(14).then(r => setData(r.data)).catch(() => {})
   }, [])
 
-  if (!data || data.dates.length === 0) return <p className="text-xs text-[#B2BEC3] py-4 text-center">暂无数据</p>
+  if (!data || data.dates.length === 0) return <p className="text-xs text-[#B2BEC3] py-4 text-center">No data yet</p>
 
   const max = Math.max(...data.mastered, ...data.learning, 1)
   const h = 100
@@ -64,7 +64,7 @@ function LearningCurveChart() {
 
 /* ──── Vocabulary Distribution bar chart ──── */
 function VocabDistributionChart({ stats }: { stats: { new_words: number; learning_words: number; mastered_words: number; total_words: number } | null }) {
-  if (!stats || stats.total_words === 0) return <p className="text-xs text-[#B2BEC3] py-4 text-center">暂无数据</p>
+  if (!stats || stats.total_words === 0) return <p className="text-xs text-[#B2BEC3] py-4 text-center">No data yet</p>
 
   const bars = [
     { label: 'New', value: stats.new_words, color: '#74B9FF', bg: 'rgba(116,185,255,0.15)' },
@@ -111,8 +111,8 @@ function MostWrongWidget() {
   if (words.length === 0) {
     return (
       <div className="py-6 text-center">
-        <p className="text-xs text-[#B2BEC3]">还没有错误记录</p>
-        <p className="text-[10px] text-[#DFE6E9] mt-1">开始学习后这里会显示你最常出错的词</p>
+        <p className="text-xs text-[#B2BEC3]">No wrong-answer records yet</p>
+        <p className="text-[10px] text-[#DFE6E9] mt-1">Your most frequently incorrect words will appear here</p>
       </div>
     )
   }
@@ -174,8 +174,8 @@ function BookmarkWidget() {
     return (
       <div className="py-6 text-center">
         <Bookmark size={20} className="mx-auto text-[#DFE6E9] mb-2" />
-        <p className="text-xs text-[#B2BEC3]">还没有收藏的单词</p>
-        <p className="text-[10px] text-[#DFE6E9] mt-1">学习时按 N 收藏 + 写笔记</p>
+        <p className="text-xs text-[#B2BEC3]">No bookmarked words yet</p>
+        <p className="text-[10px] text-[#DFE6E9] mt-1">Press N while learning to bookmark and add notes</p>
       </div>
     )
   }
@@ -187,15 +187,15 @@ function BookmarkWidget() {
           <div className="flex items-center gap-2">
             <Star size={12} className="text-[#FDCB6E] shrink-0" fill="#FDCB6E" />
             <span className="text-[12px] font-semibold text-[#2D3436] flex-1 truncate">{w.word}</span>
-            <span className="text-[10px] text-[#636E72] truncate max-w-[100px]">{w.translation}</span>
+            <span className="text-[10px] text-[#636E72] truncate max-w-[140px]">{w.definition || w.phonetic || w.pos || 'No definition'}</span>
             <button onClick={() => { setEditingNote(editingNote === w.id ? null : w.id); setNoteText(w.note || '') }}
               className="p-1 rounded hover:bg-white/60 transition-colors"
-              title="编辑笔记">
+              title="Edit note">
               <Pencil size={10} className="text-[#B2BEC3]" />
             </button>
             <button onClick={() => handleRemoveBookmark(w.id)}
               className="p-1 rounded hover:bg-[#E17055]/10 transition-colors"
-              title="取消收藏">
+              title="Remove bookmark">
               <XIcon size={10} className="text-[#B2BEC3]" />
             </button>
           </div>
@@ -207,7 +207,7 @@ function BookmarkWidget() {
               <input
                 value={noteText}
                 onChange={e => setNoteText(e.target.value)}
-                placeholder="写笔记..."
+                placeholder="Write a note..."
                 className="flex-1 text-[11px] rounded-lg bg-white/60 border border-white/40 px-2 py-1 outline-none focus:border-[#00B894]/40 text-[#2D3436]"
                 autoFocus
                 onKeyDown={e => { if (e.key === 'Enter') handleSaveNote(w.id) }}
@@ -221,7 +221,7 @@ function BookmarkWidget() {
         </div>
       ))}
       {total > 8 && (
-        <p className="text-center text-[10px] text-[#B2BEC3] pt-1">还有 {total - 8} 个收藏词</p>
+        <p className="text-center text-[10px] text-[#B2BEC3] pt-1">{total - 8} more bookmarked words</p>
       )}
     </div>
   )
@@ -278,12 +278,12 @@ export function VocabularyHub(): JSX.Element {
         <div className="flex items-center justify-between">
           <div>
             <h2 className="font-serif text-2xl font-semibold text-[#2D3436]">Vocabulary</h2>
-            <p className="mt-1 text-sm text-[#636E72]">系统化记忆，稳步提升词汇量</p>
+            <p className="mt-1 text-sm text-[#636E72]">Build vocabulary systematically and improve steadily</p>
           </div>
           {stats && (
             <div className="flex items-center gap-1.5 rounded-full bg-[#E17055]/8 px-3.5 py-1.5">
               <Flame size={14} className="text-[#E17055]" />
-              <span className="text-xs font-semibold text-[#E17055]">{stats.streak_days} 天连续</span>
+              <span className="text-xs font-semibold text-[#E17055]">{stats.streak_days} day streak</span>
             </div>
           )}
         </div>
@@ -302,17 +302,17 @@ export function VocabularyHub(): JSX.Element {
               </div>
               <div>
                 <p className="text-[11px] text-[#B2BEC3] uppercase tracking-widest font-medium">Review</p>
-                <p className="text-xs text-[#636E72] mt-0.5">今日待复习</p>
+                <p className="text-xs text-[#636E72] mt-0.5">Due today</p>
               </div>
             </div>
             <div className="flex items-baseline gap-2 mb-1">
               <span className="font-serif text-4xl font-semibold text-[#2D3436] tabular-nums">
                 {loading ? '—' : dueReview}
               </span>
-              <span className="text-sm text-[#B2BEC3] font-medium">词</span>
+              <span className="text-sm text-[#B2BEC3] font-medium">words</span>
             </div>
             <p className="text-[12px] text-[#636E72]">
-              {noDue ? '太棒了，今日复习已完成' : '温故而知新，复习到期词汇'}
+              {noDue ? "Great job, today's review is complete" : 'Review due words to reinforce memory'}
             </p>
           </div>
           <button
@@ -324,7 +324,7 @@ export function VocabularyHub(): JSX.Element {
                 : 'bg-gradient-to-r from-[#E17055] to-[#E17055]/90 text-white shadow-lg shadow-[#E17055]/20 hover:shadow-xl hover:shadow-[#E17055]/30 hover:scale-[1.02] active:scale-[0.98]'
               }`}
           >
-            {noDue ? '已全部复习 ✓' : '开始复习'}
+            {noDue ? 'All reviewed ✓' : 'Start Review'}
           </button>
         </GlassCard>
 
@@ -339,7 +339,7 @@ export function VocabularyHub(): JSX.Element {
               </div>
               <div>
                 <p className="text-[11px] text-[#B2BEC3] uppercase tracking-widest font-medium">Learn</p>
-                <p className="text-xs text-[#636E72] mt-0.5">今日新词</p>
+                <p className="text-xs text-[#636E72] mt-0.5">New words today</p>
               </div>
             </div>
             <div className="flex items-baseline gap-2 mb-2">
@@ -364,7 +364,7 @@ export function VocabularyHub(): JSX.Element {
                 className="flex h-6 w-6 items-center justify-center rounded-lg text-[#636E72] hover:bg-white/70 hover:text-[#2D3436] transition-all active:scale-90">
                 <Plus size={12} />
               </button>
-              <span className="text-[9px] text-[#B2BEC3] ml-0.5">词/天</span>
+              <span className="text-[9px] text-[#B2BEC3] ml-0.5">words/day</span>
             </div>
           </div>
 
@@ -372,7 +372,76 @@ export function VocabularyHub(): JSX.Element {
             onClick={() => navigate('/vocabulary/learn')}
             className="mt-3 w-full rounded-2xl bg-gradient-to-r from-[#00B894] to-[#00B894]/90 py-3 text-sm font-medium tracking-wide text-white shadow-lg shadow-[#00B894]/20 transition-all duration-200 hover:shadow-xl hover:shadow-[#00B894]/30 hover:scale-[1.02] active:scale-[0.98]"
           >
-            学习新词
+            Learn New Words
+          </button>
+        </GlassCard>
+      </div>
+
+      {/* ──── Training modes ──── */}
+      <div className="grid gap-5 sm:grid-cols-3 mt-6 animate-fade-in" style={{ animationDelay: '0.07s' }}>
+        {/* Spelling */}
+        <GlassCard className="relative flex flex-col justify-between overflow-hidden p-5 min-h-[140px] transition-all duration-300 hover:scale-[1.008] hover:shadow-xl" hover>
+          <div className="pointer-events-none absolute -right-6 -top-6 h-24 w-24 rounded-full opacity-15"
+            style={{ background: 'radial-gradient(circle, #74B9FF 0%, transparent 70%)' }} />
+          <div className="flex items-center gap-3 mb-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-[#74B9FF]/15 to-[#74B9FF]/5 shadow-sm">
+              <Pencil className="text-[#74B9FF]" size={16} />
+            </div>
+            <div>
+              <p className="text-[11px] text-[#B2BEC3] uppercase tracking-widest font-medium">Spelling</p>
+              <p className="text-[10px] text-[#636E72]">Spelling Practice</p>
+            </div>
+          </div>
+          <p className="text-[11px] text-[#636E72] mb-3">Type words from definitions to strengthen spelling memory</p>
+          <button
+            onClick={() => navigate('/vocabulary/spelling')}
+            className="w-full rounded-xl bg-gradient-to-r from-[#74B9FF] to-[#74B9FF]/85 py-2.5 text-xs font-medium tracking-wide text-white shadow-md shadow-[#74B9FF]/20 transition-all duration-200 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]"
+          >
+            Start Spelling
+          </button>
+        </GlassCard>
+
+        {/* Dictation */}
+        <GlassCard className="relative flex flex-col justify-between overflow-hidden p-5 min-h-[140px] transition-all duration-300 hover:scale-[1.008] hover:shadow-xl" hover>
+          <div className="pointer-events-none absolute -right-6 -top-6 h-24 w-24 rounded-full opacity-15"
+            style={{ background: 'radial-gradient(circle, #A78BFA 0%, transparent 70%)' }} />
+          <div className="flex items-center gap-3 mb-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-[#A78BFA]/15 to-[#A78BFA]/5 shadow-sm">
+              <Volume2 className="text-[#A78BFA]" size={16} />
+            </div>
+            <div>
+              <p className="text-[11px] text-[#B2BEC3] uppercase tracking-widest font-medium">Dictation</p>
+              <p className="text-[10px] text-[#636E72]">Dictation practice</p>
+            </div>
+          </div>
+          <p className="text-[11px] text-[#636E72] mb-3">Spell from pronunciation to train listening and spelling</p>
+          <button
+            onClick={() => navigate('/vocabulary/dictation')}
+            className="w-full rounded-xl bg-gradient-to-r from-[#A78BFA] to-[#A78BFA]/85 py-2.5 text-xs font-medium tracking-wide text-white shadow-md shadow-[#A78BFA]/20 transition-all duration-200 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]"
+          >
+            Start Dictation
+          </button>
+        </GlassCard>
+
+        {/* Stats */}
+        <GlassCard className="relative flex flex-col justify-between overflow-hidden p-5 min-h-[140px] transition-all duration-300 hover:scale-[1.008] hover:shadow-xl" hover>
+          <div className="pointer-events-none absolute -right-6 -top-6 h-24 w-24 rounded-full opacity-15"
+            style={{ background: 'radial-gradient(circle, #FDCB6E 0%, transparent 70%)' }} />
+          <div className="flex items-center gap-3 mb-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-[#FDCB6E]/15 to-[#FDCB6E]/5 shadow-sm">
+              <Activity className="text-[#F39C12]" size={16} />
+            </div>
+            <div>
+              <p className="text-[11px] text-[#B2BEC3] uppercase tracking-widest font-medium">Statistics</p>
+              <p className="text-[10px] text-[#636E72]">Learning stats</p>
+            </div>
+          </div>
+          <p className="text-[11px] text-[#636E72] mb-3">Streak, frequent mistakes, and activity trend</p>
+          <button
+            onClick={() => navigate('/vocabulary/stats')}
+            className="w-full rounded-xl bg-gradient-to-r from-[#FDCB6E] to-[#F39C12]/85 py-2.5 text-xs font-medium tracking-wide text-white shadow-md shadow-[#FDCB6E]/20 transition-all duration-200 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]"
+          >
+            View Stats
           </button>
         </GlassCard>
       </div>
@@ -380,7 +449,7 @@ export function VocabularyHub(): JSX.Element {
       {/* ──── Word order selector (inline tabs) ──── */}
       <section className="mt-6 animate-fade-in" style={{ animationDelay: '0.08s' }}>
         <div className="flex items-center gap-3 mb-3">
-          <h3 className="text-[11px] font-medium text-[#B2BEC3] uppercase tracking-widest">排列顺序</h3>
+          <h3 className="text-[11px] font-medium text-[#B2BEC3] uppercase tracking-widest">Word Order</h3>
         </div>
         <div className="flex flex-wrap gap-2">
           {WORD_ORDER_OPTIONS.map(opt => (
@@ -395,7 +464,7 @@ export function VocabularyHub(): JSX.Element {
             >
               {opt.label}
               {opt.value === 'random' && (
-                <span className="ml-1 text-[8px] text-[#B2BEC3] font-normal align-super">推荐</span>
+                <span className="ml-1 text-[8px] text-[#B2BEC3] font-normal align-super">Recommended</span>
               )}
             </button>
           ))}
@@ -432,7 +501,7 @@ export function VocabularyHub(): JSX.Element {
           {stats.total_words > 0 && (
             <div className="mt-4">
               <div className="flex items-center justify-between mb-1.5">
-                <span className="text-[11px] text-[#636E72]">掌握进度</span>
+                <span className="text-[11px] text-[#636E72]">Mastery progress</span>
                 <span className="text-[11px] font-semibold text-[#2D3436]">
                   {((stats.mastered_words / stats.total_words) * 100).toFixed(1)}%
                 </span>
@@ -456,9 +525,9 @@ export function VocabularyHub(): JSX.Element {
           <GlassCard className="p-5" hover>
             <div className="flex items-center justify-between mb-4">
               <h3 className="flex items-center gap-2 text-[11px] font-medium text-[#B2BEC3] uppercase tracking-widest">
-                <TrendingUp size={12} className="text-[#00B894]" /> 学习趋势
+                <TrendingUp size={12} className="text-[#00B894]" /> Learning Trend
               </h3>
-              <span className="text-[10px] text-[#B2BEC3]">近 14 天</span>
+              <span className="text-[10px] text-[#B2BEC3]">Last 14 days</span>
             </div>
             <LearningCurveChart />
           </GlassCard>
@@ -466,7 +535,7 @@ export function VocabularyHub(): JSX.Element {
           <GlassCard className="p-5" hover>
             <div className="flex items-center justify-between mb-4">
               <h3 className="flex items-center gap-2 text-[11px] font-medium text-[#B2BEC3] uppercase tracking-widest">
-                <BarChart3 size={12} className="text-[#74B9FF]" /> 词汇分布
+                <BarChart3 size={12} className="text-[#74B9FF]" /> Vocabulary Distribution
               </h3>
             </div>
             <VocabDistributionChart stats={stats} />
@@ -478,7 +547,7 @@ export function VocabularyHub(): JSX.Element {
           <GlassCard className="p-5" hover>
             <div className="flex items-center justify-between mb-3">
               <h3 className="flex items-center gap-2 text-[11px] font-medium text-[#B2BEC3] uppercase tracking-widest">
-                <AlertTriangle size={12} className="text-[#E17055]" /> 易错词排行
+                <AlertTriangle size={12} className="text-[#E17055]" /> Most Incorrect Words
               </h3>
               <ChevronRight size={12} className="text-[#B2BEC3]" />
             </div>
@@ -489,7 +558,7 @@ export function VocabularyHub(): JSX.Element {
           <GlassCard className="p-5" hover>
             <div className="flex items-center justify-between mb-3">
               <h3 className="flex items-center gap-2 text-[11px] font-medium text-[#B2BEC3] uppercase tracking-widest">
-                <Star size={12} className="text-[#FDCB6E]" /> 收藏词本
+                <Star size={12} className="text-[#FDCB6E]" /> Bookmarked Words
               </h3>
               <ChevronRight size={12} className="text-[#B2BEC3]" />
             </div>

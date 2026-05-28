@@ -4,6 +4,7 @@ sqlalchemy
 aiosqlite
 pydantic
 httpx
+openai
 python-dotenv
 orjson
 websockets

@@ -77,6 +77,8 @@ export class PythonManager {
 
     let command = 'python'
     let args: string[] = []
+    // First launch with source mode may need to install deps — allow longer timeout
+    let healthTimeout = 15000
 
     if (isDev) {
       const entry = join(backendRoot, 'app', 'main.py')
@@ -84,9 +86,26 @@ export class PythonManager {
       command = resolved.command
       args = resolved.args
     } else {
+      // Strategy 1: Try native binary (PyInstaller build)
       const binary = process.platform === 'win32' ? 'backend.exe' : 'backend'
-      command = join(backendRoot, binary)
-      args = ['--port', String(port)]
+      const binaryPath = join(backendRoot, binary)
+
+      // Strategy 2: launch-backend.sh (auto-installs deps on first run)
+      const launcherPath = join(backendRoot, 'launch-backend.sh')
+
+      if (existsSync(binaryPath)) {
+        command = binaryPath
+        args = ['--port', String(port)]
+      } else if (process.platform !== 'win32' && existsSync(launcherPath)) {
+        command = '/bin/bash'
+        args = [launcherPath, '--port', String(port)]
+        healthTimeout = 120000 // first run may pip install
+      } else {
+        // Strategy 3: direct python3 (user must have deps installed)
+        const entry = join(backendRoot, 'app', 'main.py')
+        command = process.platform === 'win32' ? 'python' : 'python3'
+        args = [entry, '--port', String(port)]
+      }
     }
 
     const existingPythonPath = process.env.PYTHONPATH ?? ''
@@ -95,12 +114,17 @@ export class PythonManager {
       ? `${backendRoot}${pathDelimiter}${existingPythonPath}`
       : backendRoot
 
+    // In packaged mode, put the writable database in userData instead of the
+    // read-only resources directory.
+    const dbPath = isDev ? '' : join(app.getPath('userData'), 'ielts_mate.db')
+
     this.childProcess = spawn(command, args, {
       cwd: backendRoot,
       windowsHide: true,
       env: {
         ...process.env,
-        PYTHONPATH: pythonPath
+        PYTHONPATH: pythonPath,
+        ...(dbPath ? { BACKEND_DB_PATH: dbPath } : {})
       }
     })
 
@@ -117,7 +141,7 @@ export class PythonManager {
     })
 
     try {
-      await this.waitForHealth(`http://127.0.0.1:${port}`)
+      await this.waitForHealth(`http://127.0.0.1:${port}`, healthTimeout)
     } catch (error) {
       await this.stop()
       throw error

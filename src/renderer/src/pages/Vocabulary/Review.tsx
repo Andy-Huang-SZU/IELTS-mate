@@ -67,7 +67,7 @@ export function VocabularyReview(): JSX.Element {
     if (quality === 3) setSessionCorrect((c) => c + 1)
     else if (quality === 0) setSessionWrong((c) => c + 1)
 
-    await submitReview(word.id, quality as 0 | 2 | 3 | 5)
+    await submitReview(word.id, quality as 0 | 2 | 3 | 5, 'review')
 
     // Auto advance after a short delay
     setTimeout(() => {
@@ -111,7 +111,7 @@ export function VocabularyReview(): JSX.Element {
   }, [flipped, answered, handleFlip, handleRate, handleToggleBookmark])
 
   const handleReset = useCallback(async () => {
-    if (!window.confirm('重置所有词汇进度？所有单词将回到"新词"状态。')) return
+    if (!window.confirm('Reset all vocabulary progress? All words will return to the "new" state.')) return
     setResetting(true)
     await resetProgress()
     setResetting(false)
@@ -143,7 +143,7 @@ export function VocabularyReview(): JSX.Element {
 
   return (
     <PageContainer className="flex min-h-[80vh] flex-col">
-      <h1 className="sr-only">词汇复习</h1>
+      <h1 className="sr-only">Vocabulary Review</h1>
 
       {/* Top bar */}
       <div className="mb-5 flex items-center gap-4 animate-fade-in">
@@ -151,11 +151,11 @@ export function VocabularyReview(): JSX.Element {
           onClick={() => navigate('/vocabulary')}
           className="flex items-center gap-1.5 text-sm text-[#636E72] transition-colors hover:text-[#2D3436]"
         >
-          <ArrowLeft size={16} /> 返回
+          <ArrowLeft size={16} /> Back
         </button>
         <div className="flex-1 max-w-[400px] mx-auto">
           <div className="flex justify-between mb-1">
-            <span className="text-[11px] text-[#636E72]">复习</span>
+            <span className="text-[11px] text-[#636E72]">Review</span>
             <span className="text-[11px] text-[#2D3436] font-semibold">
               {loading ? '...' : `${Math.min(localIndex + 1, words.length)} / ${words.length}`}
             </span>
@@ -180,26 +180,26 @@ export function VocabularyReview(): JSX.Element {
       {error && <div className="mb-4 rounded-lg bg-red-50 px-4 py-2 text-sm text-red-600 animate-fade-in">{error}</div>}
 
       {loading && !word && (
-        <div className="flex-1 flex items-center justify-center text-sm text-[#636E72] animate-pulse">加载中...</div>
+        <div className="flex-1 flex items-center justify-center text-sm text-[#636E72] animate-pulse">Loading...</div>
       )}
 
       {!loading && words.length === 0 && (
         <div className="flex-1 flex items-center justify-center">
           <GlassCard className="max-w-sm p-8 text-center animate-fade-in" hover>
-            <h2 className="text-lg font-semibold text-[#2D3436]">没有待复习的单词！</h2>
-            <p className="mt-2 text-sm text-[#636E72]">所有单词都已复习完毕，可以去学习新词。</p>
+            <h2 className="text-lg font-semibold text-[#2D3436]">No words due for review!</h2>
+            <p className="mt-2 text-sm text-[#636E72]">All words have been reviewed. You can learn new words now.</p>
             <div className="mt-5 flex justify-center gap-3">
               <button
                 onClick={() => navigate('/vocabulary/learn')}
                 className="rounded-xl bg-[#00B894] px-5 py-2.5 text-sm font-medium text-white transition-all hover:scale-[1.02] active:scale-95"
               >
-                学习新词
+                Learn New Words
               </button>
               <button
                 onClick={() => navigate('/vocabulary')}
                 className="rounded-xl bg-white/50 px-5 py-2.5 text-sm font-medium text-[#2D3436] backdrop-blur transition-all hover:bg-white/70"
               >
-                返回
+                Back
               </button>
             </div>
           </GlassCard>
@@ -235,7 +235,7 @@ export function VocabularyReview(): JSX.Element {
                   ))}
                 </div>
                 {!flipped && (
-                  <p className="mt-5 text-xs text-[#B2BEC3] animate-pulse">点击翻转查看释义</p>
+                  <p className="mt-5 text-xs text-[#B2BEC3] animate-pulse">Click to flip and view meaning</p>
                 )}
               </GlassCard>
 
@@ -262,7 +262,7 @@ export function VocabularyReview(): JSX.Element {
                 className="flex flex-col items-center gap-1.5 rounded-2xl py-4 bg-[#E17055]/8 border-2 border-transparent transition-all duration-200 hover:border-[#E17055]/30 hover:scale-[1.03] hover:shadow-lg active:scale-[0.97]"
               >
                 <X size={20} className="text-[#E17055]" />
-                <span className="text-sm font-medium text-[#E17055]">忘记了</span>
+                <span className="text-sm font-medium text-[#E17055]">Forgot</span>
                 <kbd className="px-1.5 py-0.5 rounded bg-black/5 text-[9px] font-mono text-[#B2BEC3]">1</kbd>
               </button>
               <button
@@ -270,7 +270,7 @@ export function VocabularyReview(): JSX.Element {
                 className="flex flex-col items-center gap-1.5 rounded-2xl py-4 bg-[#FDCB6E]/8 border-2 border-transparent transition-all duration-200 hover:border-[#FDCB6E]/30 hover:scale-[1.03] hover:shadow-lg active:scale-[0.97]"
               >
                 <HelpCircle size={20} className="text-[#F39C12]" />
-                <span className="text-sm font-medium text-[#F39C12]">模糊</span>
+                <span className="text-sm font-medium text-[#F39C12]">Unsure</span>
                 <kbd className="px-1.5 py-0.5 rounded bg-black/5 text-[9px] font-mono text-[#B2BEC3]">2</kbd>
               </button>
               <button
@@ -278,7 +278,7 @@ export function VocabularyReview(): JSX.Element {
                 className="flex flex-col items-center gap-1.5 rounded-2xl py-4 bg-[#00B894]/8 border-2 border-transparent transition-all duration-200 hover:border-[#00B894]/30 hover:scale-[1.03] hover:shadow-lg active:scale-[0.97]"
               >
                 <Check size={20} className="text-[#00B894]" />
-                <span className="text-sm font-medium text-[#00B894]">认识</span>
+                <span className="text-sm font-medium text-[#00B894]">Know</span>
                 <kbd className="px-1.5 py-0.5 rounded bg-black/5 text-[9px] font-mono text-[#B2BEC3]">3</kbd>
               </button>
             </div>
@@ -296,13 +296,13 @@ export function VocabularyReview(): JSX.Element {
                     }`}
                 >
                   <Bookmark size={12} fill={isBookmarked ? '#FDCB6E' : 'none'} />
-                  {isBookmarked ? '已收藏' : '收藏'}
+                  {isBookmarked ? 'Bookmarked' : 'Bookmark'}
                   <kbd className="ml-1 px-1 py-0.5 rounded bg-black/5 text-[9px] font-mono">N</kbd>
                 </button>
                 {isBookmarked && !showNoteInput && noteText && (
                   <button onClick={() => setShowNoteInput(true)}
                     className="flex items-center gap-1 text-[10px] text-[#636E72] hover:text-[#2D3436] transition-colors">
-                    <Pencil size={10} /> 编辑笔记
+                    <Pencil size={10} /> Edit note
                   </button>
                 )}
               </div>
@@ -311,14 +311,14 @@ export function VocabularyReview(): JSX.Element {
                   <input
                     value={noteText}
                     onChange={e => setNoteText(e.target.value)}
-                    placeholder="写笔记..."
+                    placeholder="Write a note..."
                     className="flex-1 text-[11px] rounded-xl bg-white/50 border border-white/40 px-3 py-2 outline-none focus:border-[#00B894]/40 text-[#2D3436] backdrop-blur"
                     autoFocus
                     onKeyDown={e => { if (e.key === 'Enter') handleSaveNote() }}
                   />
                   <button onClick={handleSaveNote}
                     className="rounded-xl bg-[#00B894]/10 px-3 py-2 text-[11px] text-[#00B894] font-medium hover:bg-[#00B894]/20 transition-colors">
-                    保存
+                    Save
                   </button>
                 </div>
               )}
@@ -327,17 +327,17 @@ export function VocabularyReview(): JSX.Element {
 
           {/* Keyboard hints */}
           <div className="flex justify-center gap-4 mt-3 text-[10px] text-[#B2BEC3]">
-            <span><kbd className="px-1.5 py-0.5 rounded bg-black/5 font-mono text-[9px]">Space</kbd> 翻转</span>
-            <span><kbd className="px-1.5 py-0.5 rounded bg-black/5 font-mono text-[9px]">1</kbd> 忘记</span>
-            <span><kbd className="px-1.5 py-0.5 rounded bg-black/5 font-mono text-[9px]">2</kbd> 模糊</span>
-            <span><kbd className="px-1.5 py-0.5 rounded bg-black/5 font-mono text-[9px]">3</kbd> 认识</span>
-            <span><kbd className="px-1.5 py-0.5 rounded bg-black/5 font-mono text-[9px]">N</kbd> 收藏</span>
+            <span><kbd className="px-1.5 py-0.5 rounded bg-black/5 font-mono text-[9px]">Space</kbd> Flip</span>
+            <span><kbd className="px-1.5 py-0.5 rounded bg-black/5 font-mono text-[9px]">1</kbd> Forgot</span>
+            <span><kbd className="px-1.5 py-0.5 rounded bg-black/5 font-mono text-[9px]">2</kbd> Unsure</span>
+            <span><kbd className="px-1.5 py-0.5 rounded bg-black/5 font-mono text-[9px]">3</kbd> Know</span>
+            <span><kbd className="px-1.5 py-0.5 rounded bg-black/5 font-mono text-[9px]">N</kbd> Bookmark</span>
           </div>
 
           {/* Stats */}
           <div className="flex justify-center gap-6 mt-4 text-xs text-[#636E72]">
-            <span>✓ <strong className="text-[#00B894]">{sessionCorrect}</strong> 认识</span>
-            <span>✗ <strong className="text-[#E17055]">{sessionWrong}</strong> 忘记</span>
+            <span>✓ <strong className="text-[#00B894]">{sessionCorrect}</strong> Know</span>
+            <span>✗ <strong className="text-[#E17055]">{sessionWrong}</strong> Forgot</span>
             <span>⏱ <strong className="text-[#2D3436]">{elapsedStr}</strong></span>
           </div>
         </div>
